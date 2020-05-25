@@ -55,7 +55,7 @@ namespace streamdeck {
   }
 
 
-  specific_device_type<product_streamdeck_original>::payload_type::iterator specific_device_type<product_streamdeck_original>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  gen1_device_type::payload_type::iterator gen1_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
   {
     auto it = buffer.begin();
     *it++ = std::byte(0x02);
@@ -79,21 +79,21 @@ namespace streamdeck {
   }
 
 
-  void specific_device_type<product_streamdeck_original>::reset()
+  void gen1_device_type::reset()
   {
     const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
     send_report(req);
   }
 
 
-  void specific_device_type<product_streamdeck_original>::_set_brightness(std::byte p)
+  void gen1_device_type::_set_brightness(std::byte p)
   {
     const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
     send_report(req);
   }
 
 
-  specific_device_type<product_streamdeck_original_v2>::payload_type::iterator specific_device_type<product_streamdeck_original_v2>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  gen2_device_type::payload_type::iterator gen2_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
   {
     auto it = buffer.begin();
     auto this_length = std::min(payload_length, remaining);
@@ -110,81 +110,14 @@ namespace streamdeck {
   }
 
 
-  void specific_device_type<product_streamdeck_original_v2>::reset()
+  void gen2_device_type::reset()
   {
     const std::array<std::byte,32> req = { std::byte(0x03), std::byte(0x02) };
     send_report(req);
   }
 
 
-  void specific_device_type<product_streamdeck_original_v2>::_set_brightness(std::byte p)
-  {
-    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
-    send_report(req);
-  }
-
-
-  specific_device_type<product_streamdeck_mini>::payload_type::iterator specific_device_type<product_streamdeck_mini>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
-  {
-    auto it = buffer.begin();
-    *it++ = std::byte(0x02);
-    *it++ = std::byte(0x01);
-    *it++ = std::byte(page);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(remaining > payload_length ? 0 : 1);
-    *it++ = std::byte(key + 1);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-
-    return it;
-  }
-
-
-  void specific_device_type<product_streamdeck_mini>::reset()
-  {
-    const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
-    send_report(req);
-  }
-
-  void specific_device_type<product_streamdeck_mini>::_set_brightness(std::byte p)
-  {
-    const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
-    send_report(req);
-  }
-
-
-  specific_device_type<product_streamdeck_xl>::payload_type::iterator specific_device_type<product_streamdeck_xl>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
-  {
-    auto it = buffer.begin();
-    auto this_length = std::min(payload_length, remaining);
-    *it++ = std::byte(0x02);
-    *it++ = std::byte(0x07);
-    *it++ = std::byte(key);
-    *it++ = std::byte(remaining > payload_length ? 0 : 1);
-    *it++ = std::byte(this_length & 0xff);
-    *it++ = std::byte(this_length >> 8);
-    *it++ = std::byte(page & 0xff);
-    *it++ = std::byte(page >> 8);
-
-    return it;
-  }
-
-
-  void specific_device_type<product_streamdeck_xl>::reset()
-  {
-    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x02) };
-    send_report(req);
-  }
-
-  void specific_device_type<product_streamdeck_xl>::_set_brightness(std::byte p)
+  void gen2_device_type::_set_brightness(std::byte p)
   {
     const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
     send_report(req);

@@ -149,84 +149,88 @@ namespace streamdeck {
   template<unsigned short D>
   struct specific_device_type;
 
-  // StreamDeck Original
-  template<>
-  struct specific_device_type<product_streamdeck_original> : public device_type {
+
+  // First generation.
+  struct gen1_device_type : public device_type {
     using base_type = device_type;
 
-    static constexpr unsigned image_report_length = 8191;
+    const unsigned image_report_length;
     static constexpr unsigned header_length = 8;
-    static constexpr unsigned payload_length = image_report_length - header_length;
+    const unsigned payload_length;
 
-    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::bmp, image_report_length, true, true) {}
+    gen1_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, unsigned imgreplen, bool hflip, bool vflip)
+    : device_type(path, width, height, cols, rows, image_format_type::bmp, imgreplen, hflip, vflip), image_report_length(imgreplen), payload_length(imgreplen - header_length)
+    {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
-
 
     void reset() override final;
 
   private:
     void _set_brightness(std::byte p) override final;
+  };
+
+
+  // Second generation.
+  struct gen2_device_type : public device_type {
+    using base_type = device_type;
+
+    static constexpr unsigned image_report_length = 1024;
+    static constexpr unsigned header_length = 8;
+    static constexpr unsigned payload_length = image_report_length - header_length;
+
+    gen2_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows)
+    : device_type(path, width, height, cols, rows, image_format_type::jpeg, image_report_length, true, true)
+    {}
+
+    payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
+
+    void reset() override final;
+
+  private:
+    void _set_brightness(std::byte p) override final;
+  };
+
+
+  // StreamDeck Original
+  template<>
+  struct specific_device_type<product_streamdeck_original> : public gen1_device_type {
+    using base_type = gen1_device_type;
+
+    static constexpr unsigned image_report_length = 8191;
+
+    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_report_length, true, true) {}
   };
 
 
   // StreamDeck Original V2
   template<>
-  struct specific_device_type<product_streamdeck_original_v2> : public device_type {
-    using base_type = device_type;
+  struct specific_device_type<product_streamdeck_original_v2> : public gen2_device_type {
+    using base_type = gen2_device_type;
 
-    static constexpr unsigned image_report_length = 1024;
-    static constexpr unsigned header_length = 8;
-    static constexpr unsigned payload_length = image_report_length - header_length;
-
-    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::jpeg, image_report_length, true, true) {}
-
-    payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
-
-
-    void reset() override final;
-
-  private:
-    void _set_brightness(std::byte p) override final;
+    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3) {}
   };
+
 
   // StreamDeck Mini
   template<>
-  struct specific_device_type<product_streamdeck_mini> : public device_type {
-    using base_type = device_type;
+  struct specific_device_type<product_streamdeck_mini> : public gen1_device_type {
+    using base_type = gen1_device_type;
 
     static constexpr unsigned image_report_length = 1024;
     static constexpr unsigned header_length = 8;
     static constexpr unsigned payload_length = image_report_length - header_length;
 
-    specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_format_type::bmp, image_report_length, false, true) {}
-
-    payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
-
-    void reset() override final;
-
-  private:
-    void _set_brightness(std::byte p) override final;
+    specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_report_length, false, true) {}
   };
 
 
   // StreamDeck XL
   template<>
-  struct specific_device_type<product_streamdeck_xl> : public device_type {
-    using base_type = device_type;
+  struct specific_device_type<product_streamdeck_xl> : public gen2_device_type {
+    using base_type = gen2_device_type;
 
-    static constexpr unsigned image_report_length = 1024;
-    static constexpr unsigned header_length = 8;
-    static constexpr unsigned payload_length = image_report_length - header_length;
-
-    specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4, image_format_type::jpeg, image_report_length, true, true) {}
-
-    payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
-
-    void reset() override final;
-
-  private:
-    void _set_brightness(std::byte p) override final;
+    specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4) {}
   };
 
 
