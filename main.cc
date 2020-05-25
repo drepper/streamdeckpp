@@ -7,10 +7,9 @@
 #include <experimental/array>
 
 #include <error.h>
-#include <fcntl.h>
 #include <hidapi.h>
-#include <unistd.h>
-#include <sys/stat.h>
+
+#include <Magick++.h>
 
 
 namespace streamdeck {
@@ -23,12 +22,27 @@ namespace streamdeck {
   static constexpr uint16_t product_streamdeck_xl = 0x006c;
 
 
+  namespace {
+
+    struct blob_container {
+      blob_container(Magick::Blob& blob) : front(static_cast<const char*>(blob.data())), back(front + blob.length()) {}
+
+      auto begin() const { return front; }
+      auto end() const { return back; }
+
+      const char* front;
+      const char* back;
+    };
+
+  } // anonymous namespace
+
+
   struct device_type {
     enum struct image_format_type { bmp, jpeg };
 
-    device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen)
+    device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
     : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * height),
-      key_image_format(imgfmt), image_report_length(imgreplen),
+      key_image_format(imgfmt), image_report_length(imgreplen), key_hflip(hflip), key_vflip(vflip),
       m_path(path), m_d(hid_open_path(m_path))
     {
     }
@@ -52,6 +66,8 @@ namespace streamdeck {
     const unsigned key_count;
 
     const image_format_type key_image_format;
+    const bool key_hflip;
+    const bool key_vflip;
     const unsigned image_report_length;
 
 
@@ -81,6 +97,42 @@ namespace streamdeck {
       }
 
       return 0;
+    }
+
+    int set_key_image(unsigned key, const char* fname)
+    {
+      Magick::Image image(fname);
+
+      if (key_hflip)
+        image.transpose();
+      if (key_vflip)
+        image.transverse();
+
+      auto size = image.size();
+      if (size.width() != pixel_width || size.height() != pixel_height) {
+        auto factor = std::min(double(pixel_width) / size.width(), double(pixel_height) / size.height());
+        Magick::Geometry new_geo(size_t(size.width() * factor), size_t(size.height() * factor));
+        image.scale(new_geo);
+
+        if (new_geo.width() != pixel_width || new_geo.height() != pixel_height) {
+          Magick::Geometry defgeo(pixel_width, pixel_height);
+          Magick::Image newimage(defgeo, Magick::Color("black"));
+
+          newimage.composite(image, ssize_t(pixel_width - new_geo.width()) / 2, ssize_t(pixel_height - new_geo.height()) / 2);
+          image.scale(defgeo);
+          image = newimage;
+        }
+      }
+
+      if (key_image_format == image_format_type::jpeg)
+        image.magick("JPEG");
+      else if (key_image_format == image_format_type::bmp)
+        image.magick("BMP");
+
+      Magick::Blob blob;
+      image.write(&blob);
+
+      return set_key_image(key, blob_container(blob));
     }
 
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
@@ -127,15 +179,32 @@ namespace streamdeck {
   struct specific_device_type<product_streamdeck_original> : public device_type {
     using base_type = device_type;
 
-    static constexpr unsigned image_report_length = 1024;
+    static constexpr unsigned image_report_length = 8191;
     static constexpr unsigned header_length = 8;
     static constexpr unsigned payload_length = image_report_length - header_length;
 
-    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::bmp, 8191) {}
+    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::bmp, image_report_length, true, true) {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final
     {
       auto it = buffer.begin();
+      *it++ = std::byte(0x02);
+      *it++ = std::byte(0x01);
+      *it++ = std::byte(page + 1);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(remaining > payload_length ? 0 : 1);
+      *it++ = std::byte(key + 1);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+
       return it;
     }
 
@@ -161,11 +230,21 @@ namespace streamdeck {
     static constexpr unsigned header_length = 8;
     static constexpr unsigned payload_length = image_report_length - header_length;
 
-    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::jpeg, 1024) {}
+    specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_format_type::jpeg, image_report_length, true, true) {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final
     {
       auto it = buffer.begin();
+      auto this_length = std::min(payload_length, remaining);
+      *it++ = std::byte(0x02);
+      *it++ = std::byte(0x07);
+      *it++ = std::byte(key);
+      *it++ = std::byte(remaining > payload_length ? 0 : 1);
+      *it++ = std::byte(this_length & 0xff);
+      *it++ = std::byte(this_length >> 8);
+      *it++ = std::byte(page & 0xff);
+      *it++ = std::byte(page >> 8);
+
       return it;
     }
 
@@ -190,11 +269,28 @@ namespace streamdeck {
     static constexpr unsigned header_length = 8;
     static constexpr unsigned payload_length = image_report_length - header_length;
 
-    specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_format_type::bmp, 1024) {}
+    specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_format_type::bmp, image_report_length, false, true) {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final
     {
       auto it = buffer.begin();
+      *it++ = std::byte(0x02);
+      *it++ = std::byte(0x01);
+      *it++ = std::byte(page);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(remaining > payload_length ? 0 : 1);
+      *it++ = std::byte(key + 1);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+
       return it;
     }
 
@@ -219,7 +315,7 @@ namespace streamdeck {
     static constexpr unsigned header_length = 8;
     static constexpr unsigned payload_length = image_report_length - header_length;
 
-    specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4, image_format_type::jpeg, image_report_length) {}
+    specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4, image_format_type::jpeg, image_report_length, true, true) {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final
     {
@@ -251,7 +347,7 @@ namespace streamdeck {
 
 
   struct context {
-    context();
+    context(const char* path);
     ~context();
 
     bool any() const { return ! devinfo.empty(); }
@@ -283,7 +379,7 @@ namespace streamdeck {
   };
 
 
-  context::context()
+  context::context(const char* path)
   {
     if (auto r = hid_init(); r < 0)
       throw std::runtime_error("hid_init");
@@ -297,6 +393,8 @@ namespace streamdeck {
       if (ap)
         devinfo.emplace_back(std::move(ap));
     }
+
+    Magick::InitializeMagick(path);
   }
 
   context::~context()
@@ -309,21 +407,16 @@ namespace streamdeck {
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
-  streamdeck::context ctx;
+  streamdeck::context ctx(argv[0]);
   if (! ctx.any())
     error(EXIT_FAILURE, 0, "failed streamdeck::context initialization");
 
+  int key = argc == 1 ? 0 : atoi(argv[1]);
+  const char* fname = argc < 3 ? "test.jpg" : argv[2];
 #if 1
-  const char fname[] = "test.jpg";
-  int fd = open(fname, O_RDONLY);
-  struct stat st;
-  fstat(fd, &st);
-  std::vector<std::byte> img(st.st_size);
-  read(fd, img.data(), img.size());
-  ctx[0]->set_key_image(0, img);
-  close(fd);
+  ctx[0]->set_key_image(key, fname);
 #else
   ctx[0]->reset();
 #endif
