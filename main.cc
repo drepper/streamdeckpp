@@ -140,6 +140,21 @@ namespace streamdeck {
 
     virtual void reset() = 0;
 
+    virtual void _set_brightness(std::byte p) = 0;
+
+    template<typename T>
+    void set_brightness(T percent)
+    {
+      static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>);
+      std::byte p;
+      if constexpr (std::is_integral_v<T>)
+        p = std::byte(std::clamp(percent, static_cast<T>(0), static_cast<T>(100)));
+      else
+        p = std::byte(100.0 * std::clamp(percent, 0.0, 1.0));
+
+      _set_brightness(p);
+    }
+
 
     auto send_report(const unsigned char* data, size_t len) { return hid_send_feature_report(m_d, data, len); }
     template<typename C>
@@ -209,9 +224,15 @@ namespace streamdeck {
     }
 
 
-    void reset()
+    void reset() override final
     {
       const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
+      send_report(req);
+    }
+
+    void _set_brightness(std::byte p) override final
+    {
+      const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
       send_report(req);
     }
 
@@ -246,9 +267,15 @@ namespace streamdeck {
     }
 
 
-    void reset()
+    void reset() override final
     {
       const std::array<std::byte,32> req = { std::byte(0x03), std::byte(0x02) };
+      send_report(req);
+    }
+
+    void _set_brightness(std::byte p) override final
+    {
+      const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
       send_report(req);
     }
 
@@ -289,9 +316,15 @@ namespace streamdeck {
     }
 
 
-    void reset()
+    void reset() override final
     {
       const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
+      send_report(req);
+    }
+
+    void _set_brightness(std::byte p) override final
+    {
+      const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
       send_report(req);
     }
 
@@ -325,9 +358,15 @@ namespace streamdeck {
     }
 
 
-    void reset()
+    void reset() override final
     {
-      const std::array<std::byte,32> req = { std::byte(0x03), std::byte(0x02) };
+      const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x02) };
+      send_report(req);
+    }
+
+    void _set_brightness(std::byte p) override final
+    {
+      const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
       send_report(req);
     }
 
@@ -395,17 +434,28 @@ namespace streamdeck {
 }
 
 
+
+#include <string>
+using namespace std::string_literals;
+
+
 int main(int argc, char* argv[])
 {
+  if (argc == 1)
+    return 0;
+
   streamdeck::context ctx(argv[0]);
   if (! ctx.any())
     error(EXIT_FAILURE, 0, "failed streamdeck::context initialization");
 
-  int key = argc == 1 ? 0 : atoi(argv[1]);
-  const char* fname = argc < 3 ? "test.jpg" : argv[2];
-#if 0
-  ctx[0]->set_key_image(key, fname);
-#else
-  ctx[0]->reset();
-#endif
+  if ("image"s == argv[1]) {
+    int key = argc == 1 ? 0 : atoi(argv[2]);
+    const char* fname = argc < 3 ? "test.jpg" : argv[3];
+    ctx[0]->set_key_image(key, fname);
+  } else if ("reset"s == argv[1])
+    ctx[0]->reset();
+  else if ("brightness"s == argv[1]) {
+    unsigned percent = argc == 2 ? 50 : atoi(argv[2]);
+    ctx[0]->set_brightness(percent);
+  }
 }
