@@ -3,6 +3,193 @@
 
 namespace streamdeck {
 
+  device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
+  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * height),
+    key_image_format(imgfmt), image_report_length(imgreplen), key_hflip(hflip), key_vflip(vflip),
+    m_path(path), m_d(hid_open_path(m_path))
+  {
+  }
+
+
+  device_type::~device_type()
+  {
+    if (m_d != nullptr)
+      hid_close(m_d);
+  }
+
+
+  int device_type::set_key_image(unsigned key, const char* fname)
+  {
+    Magick::Image image(fname);
+
+    if (key_hflip)
+      image.transpose();
+    if (key_vflip)
+      image.transverse();
+
+    auto size = image.size();
+    if (size.width() != pixel_width || size.height() != pixel_height) {
+      auto factor = std::min(double(pixel_width) / size.width(), double(pixel_height) / size.height());
+      Magick::Geometry new_geo(size_t(size.width() * factor), size_t(size.height() * factor));
+      image.scale(new_geo);
+
+      if (new_geo.width() != pixel_width || new_geo.height() != pixel_height) {
+        Magick::Geometry defgeo(pixel_width, pixel_height);
+        Magick::Image newimage(defgeo, Magick::Color("black"));
+
+        newimage.composite(image, ssize_t(pixel_width - new_geo.width()) / 2, ssize_t(pixel_height - new_geo.height()) / 2);
+        image.scale(defgeo);
+        image = newimage;
+      }
+    }
+
+    if (key_image_format == image_format_type::jpeg)
+      image.magick("JPEG");
+    else if (key_image_format == image_format_type::bmp)
+      image.magick("BMP");
+
+    Magick::Blob blob;
+    image.write(&blob);
+
+    return set_key_image(key, blob_container(blob));
+  }
+
+
+  specific_device_type<product_streamdeck_original>::payload_type::iterator specific_device_type<product_streamdeck_original>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  {
+    auto it = buffer.begin();
+    *it++ = std::byte(0x02);
+    *it++ = std::byte(0x01);
+    *it++ = std::byte(page + 1);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(remaining > payload_length ? 0 : 1);
+    *it++ = std::byte(key + 1);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+
+    return it;
+  }
+
+
+  void specific_device_type<product_streamdeck_original>::reset()
+  {
+    const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
+    send_report(req);
+  }
+
+
+  void specific_device_type<product_streamdeck_original>::_set_brightness(std::byte p)
+  {
+    const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
+    send_report(req);
+  }
+
+
+  specific_device_type<product_streamdeck_original_v2>::payload_type::iterator specific_device_type<product_streamdeck_original_v2>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  {
+    auto it = buffer.begin();
+    auto this_length = std::min(payload_length, remaining);
+    *it++ = std::byte(0x02);
+    *it++ = std::byte(0x07);
+    *it++ = std::byte(key);
+    *it++ = std::byte(remaining > payload_length ? 0 : 1);
+    *it++ = std::byte(this_length & 0xff);
+    *it++ = std::byte(this_length >> 8);
+    *it++ = std::byte(page & 0xff);
+    *it++ = std::byte(page >> 8);
+
+    return it;
+  }
+
+
+  void specific_device_type<product_streamdeck_original_v2>::reset()
+  {
+    const std::array<std::byte,32> req = { std::byte(0x03), std::byte(0x02) };
+    send_report(req);
+  }
+
+
+  void specific_device_type<product_streamdeck_original_v2>::_set_brightness(std::byte p)
+  {
+    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
+    send_report(req);
+  }
+
+
+  specific_device_type<product_streamdeck_mini>::payload_type::iterator specific_device_type<product_streamdeck_mini>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  {
+    auto it = buffer.begin();
+    *it++ = std::byte(0x02);
+    *it++ = std::byte(0x01);
+    *it++ = std::byte(page);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(remaining > payload_length ? 0 : 1);
+    *it++ = std::byte(key + 1);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+    *it++ = std::byte(0x00);
+
+    return it;
+  }
+
+
+  void specific_device_type<product_streamdeck_mini>::reset()
+  {
+    const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
+    send_report(req);
+  }
+
+  void specific_device_type<product_streamdeck_mini>::_set_brightness(std::byte p)
+  {
+    const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
+    send_report(req);
+  }
+
+
+  specific_device_type<product_streamdeck_xl>::payload_type::iterator specific_device_type<product_streamdeck_xl>::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
+  {
+    auto it = buffer.begin();
+    auto this_length = std::min(payload_length, remaining);
+    *it++ = std::byte(0x02);
+    *it++ = std::byte(0x07);
+    *it++ = std::byte(key);
+    *it++ = std::byte(remaining > payload_length ? 0 : 1);
+    *it++ = std::byte(this_length & 0xff);
+    *it++ = std::byte(this_length >> 8);
+    *it++ = std::byte(page & 0xff);
+    *it++ = std::byte(page >> 8);
+
+    return it;
+  }
+
+
+  void specific_device_type<product_streamdeck_xl>::reset()
+  {
+    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x02) };
+    send_report(req);
+  }
+
+  void specific_device_type<product_streamdeck_xl>::_set_brightness(std::byte p)
+  {
+    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
+    send_report(req);
+  }
+
 
   context::context(const char* path)
   {
