@@ -218,8 +218,6 @@ namespace streamdeck {
     using base_type = gen1_device_type;
 
     static constexpr unsigned image_report_length = 1024;
-    static constexpr unsigned header_length = 8;
-    static constexpr unsigned payload_length = image_report_length - header_length;
 
     specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_report_length, false, true) {}
   };
