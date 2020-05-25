@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include "streamdeckpp.hh"
 
@@ -22,5 +23,6 @@ int main(int argc, char* argv[])
   else if ("brightness"s == argv[1]) {
     unsigned percent = argc == 2 ? 50 : atoi(argv[2]);
     ctx[0]->set_brightness(percent);
-  }
+  } else if ("serial"s == argv[1])
+    std::cout << ctx[0]->get_serial_number() << std::endl;
 }

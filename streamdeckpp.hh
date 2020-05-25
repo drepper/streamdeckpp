@@ -97,6 +97,8 @@ namespace streamdeck {
 
     virtual void reset() = 0;
 
+    virtual std::string get_serial_number() = 0;
+
   private:
     virtual void _set_brightness(std::byte p) = 0;
 
@@ -124,7 +126,7 @@ namespace streamdeck {
     auto get_report(unsigned char* data, size_t len) { return hid_get_feature_report(m_d, data, len); }
     template<typename C>
     requires std::ranges::contiguous_range<C>
-    auto get_report(C& data) { return hid_get_feature_report(m_d, data.data(), data.size()); }
+    auto get_report(C& data) { return hid_get_feature_report(m_d, (unsigned char*) data.data(), data.size()); }
 
     auto write(const unsigned char* data, size_t len) { return hid_write(m_d, data, len); }
     template<typename C>
@@ -166,6 +168,8 @@ namespace streamdeck {
 
     void reset() override final;
 
+    std::string get_serial_number() override final;
+
   private:
     void _set_brightness(std::byte p) override final;
   };
@@ -186,6 +190,8 @@ namespace streamdeck {
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
 
     void reset() override final;
+
+    std::string get_serial_number() override final;
 
   private:
     void _set_brightness(std::byte p) override final;

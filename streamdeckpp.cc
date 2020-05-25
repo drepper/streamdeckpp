@@ -93,6 +93,14 @@ namespace streamdeck {
   }
 
 
+  std::string gen1_device_type::get_serial_number()
+  {
+    std::array<std::byte,17> buf { std::byte(0x03) };
+    auto len = get_report(buf);
+    return len > 5 ? std::string(reinterpret_cast<char*>(buf.data()) + 5) : "";
+  }
+
+
   gen2_device_type::payload_type::iterator gen2_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
   {
     auto it = buffer.begin();
@@ -121,6 +129,14 @@ namespace streamdeck {
   {
     const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
     send_report(req);
+  }
+
+
+  std::string gen2_device_type::get_serial_number()
+  {
+    std::array<std::byte,32> buf { std::byte(0x06) };
+    auto len = get_report(buf);
+    return len > 2 ? std::string(reinterpret_cast<char*>(buf.data()) + 2) : "";
   }
 
 
