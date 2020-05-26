@@ -93,11 +93,23 @@ namespace streamdeck {
   }
 
 
-  std::string gen1_device_type::get_serial_number()
+  std::string gen1_device_type::_get_string(std::byte cmd)
   {
-    std::array<std::byte,17> buf { std::byte(0x03) };
+    std::array<std::byte,17> buf { cmd };
     auto len = get_report(buf);
     return len > 5 ? std::string(reinterpret_cast<char*>(buf.data()) + 5) : "";
+  }
+
+
+  std::string gen1_device_type::get_serial_number()
+  {
+    return _get_string(std::byte(0x03));
+  }
+
+
+  std::string gen1_device_type::get_firmware_version()
+  {
+    return _get_string(std::byte(0x04));
   }
 
 
@@ -132,11 +144,23 @@ namespace streamdeck {
   }
 
 
+  std::string gen2_device_type::_get_string(std::byte cmd, size_t off)
+  {
+    std::array<std::byte,32> buf { cmd };
+    auto len = get_report(buf);
+    return len > off ? std::string(reinterpret_cast<char*>(buf.data()) + off) : "";
+  }
+
+
   std::string gen2_device_type::get_serial_number()
   {
-    std::array<std::byte,32> buf { std::byte(0x06) };
-    auto len = get_report(buf);
-    return len > 2 ? std::string(reinterpret_cast<char*>(buf.data()) + 2) : "";
+    return _get_string(std::byte(0x06), 2);
+  }
+
+
+  std::string gen2_device_type::get_firmware_version()
+  {
+    return _get_string(std::byte(0x05), 6);
   }
 
 
@@ -157,6 +181,7 @@ namespace streamdeck {
 
     Magick::InitializeMagick(path);
   }
+
 
   context::~context()
   {

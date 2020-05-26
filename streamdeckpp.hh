@@ -99,6 +99,8 @@ namespace streamdeck {
 
     virtual std::string get_serial_number() = 0;
 
+    virtual std::string get_firmware_version() = 0;
+
   private:
     virtual void _set_brightness(std::byte p) = 0;
 
@@ -170,8 +172,12 @@ namespace streamdeck {
 
     std::string get_serial_number() override final;
 
+    std::string get_firmware_version() override final;
+
   private:
     void _set_brightness(std::byte p) override final;
+
+    std::string _get_string(std::byte c);
   };
 
 
@@ -193,8 +199,12 @@ namespace streamdeck {
 
     std::string get_serial_number() override final;
 
+    std::string get_firmware_version() override final;
+
   private:
     void _set_brightness(std::byte p) override final;
+
+    std::string _get_string(std::byte c, size_t off);
   };
 
 

@@ -25,4 +25,6 @@ int main(int argc, char* argv[])
     ctx[0]->set_brightness(percent);
   } else if ("serial"s == argv[1])
     std::cout << ctx[0]->get_serial_number() << std::endl;
+  else if ("firmware"s == argv[1])
+    std::cout << ctx[0]->get_firmware_version() << std::endl;
 }
