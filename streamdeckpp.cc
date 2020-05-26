@@ -21,7 +21,7 @@ namespace streamdeck {
 
 
   device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
-  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * height),
+  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * cols),
     key_image_format(imgfmt), image_report_length(imgreplen), key_hflip(hflip), key_vflip(vflip),
     m_path(path), m_d(hid_open_path(m_path))
   {
@@ -29,6 +29,12 @@ namespace streamdeck {
 
 
   device_type::~device_type()
+  {
+    close();
+  }
+
+
+  device_type::close()
   {
     if (m_d != nullptr)
       hid_close(m_d);
@@ -96,6 +102,16 @@ namespace streamdeck {
   }
 
 
+  std::vector<bool> gen1_device_type::read()
+  {
+    std::vector<bool> res(key_count);
+    std::vector<std::byte> state(1 + key_count);
+    base_type::read(state);
+    std::transform(state.begin() + 1, state.end(), res.begin(), [](auto v){ return v != std::byte(0); });
+    return res;
+  }
+
+
   void gen1_device_type::reset()
   {
     const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
@@ -144,6 +160,16 @@ namespace streamdeck {
     *it++ = std::byte(page >> 8);
 
     return it;
+  }
+
+
+  std::vector<bool> gen2_device_type::read()
+  {
+    std::vector<bool> res(key_count);
+    std::vector<std::byte> state(4 + key_count);
+    base_type::read(state);
+    std::transform(state.begin() + 4, state.end(), res.begin(), [](auto v){ return v != std::byte(0); });
+    return res;
   }
 
 

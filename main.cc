@@ -27,4 +27,12 @@ int main(int argc, char* argv[])
     std::cout << ctx[0]->get_serial_number() << std::endl;
   else if ("firmware"s == argv[1])
     std::cout << ctx[0]->get_firmware_version() << std::endl;
+  else if ("read"s == argv[1]) {
+    while (true) {
+      auto ss = ctx[0]->read();
+      for (auto s : ss)
+        std::cout << ' ' << s;
+      std::cout << std::endl;
+    }
+  }
 }

@@ -31,6 +31,8 @@ namespace streamdeck {
     bool connected() const { return m_d != nullptr; }
     auto path() const { return m_path; }
 
+    void close();
+
 
     const unsigned pixel_width;
     const unsigned pixel_height;
@@ -78,6 +80,8 @@ namespace streamdeck {
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
 
 
+    virtual std::vector<bool> read() = 0;
+
     virtual void reset() = 0;
 
     virtual std::string get_serial_number() = 0;
@@ -121,7 +125,7 @@ namespace streamdeck {
     auto read(unsigned char* data, size_t len) { return hid_read(m_d, data, len); }
     template<typename C>
     requires std::ranges::contiguous_range<C>
-    auto read(C& data) { return hid_read(m_d, data.data(), data.size()); }
+    auto read(C& data) { return hid_read(m_d, (unsigned char*) data.data(), data.size()); }
     auto read(unsigned char* data, size_t len, int timeout) { return hid_read_timeout(m_d, data, len, timeout); }
     template<typename C>
     requires std::ranges::contiguous_range<C>
@@ -151,6 +155,8 @@ namespace streamdeck {
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
 
+    std::vector<bool> read() override final;
+
     void reset() override final;
 
     std::string get_serial_number() override final;
@@ -177,6 +183,8 @@ namespace streamdeck {
     {}
 
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
+
+    std::vector<bool> read() override final;
 
     void reset() override final;
 
