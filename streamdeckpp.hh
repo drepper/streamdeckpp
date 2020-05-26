@@ -9,8 +9,6 @@
 #include <error.h>
 #include <hidapi.h>
 
-#include <Magick++.h>
-
 
 namespace streamdeck {
 
@@ -20,21 +18,6 @@ namespace streamdeck {
   static constexpr uint16_t product_streamdeck_original_v2 = 0x006d;
   static constexpr uint16_t product_streamdeck_mini = 0x0063;
   static constexpr uint16_t product_streamdeck_xl = 0x006c;
-
-
-  namespace {
-
-    struct blob_container {
-      blob_container(Magick::Blob& blob) : front(static_cast<const char*>(blob.data())), back(front + blob.length()) {}
-
-      auto begin() const { return front; }
-      auto end() const { return back; }
-
-      const char* front;
-      const char* back;
-    };
-
-  } // anonymous namespace
 
 
   struct device_type {

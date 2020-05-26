@@ -12,7 +12,7 @@ LDFLAGS = $(DEBUG) $(OPTS) $(CXXFLAGS-$@) $(LDFLAGS-$@)
 LIBS = $(LIBS-$@)
 
 
-INCLUDES-main.o = $(shell pkg-config --cflags hidapi-libusb Magick++)
+INCLUDES-main.o = $(shell pkg-config --cflags hidapi-libusb)
 INCLUDES-streamdeckpp.o = $(shell pkg-config --cflags hidapi-libusb Magick++)
 LIBS-streamdeck = $(shell pkg-config --libs hidapi-libusb Magick++)
 

@@ -1,7 +1,24 @@
 #include "streamdeckpp.hh"
 
+#include <Magick++.h>
+
 
 namespace streamdeck {
+
+  namespace {
+
+    struct blob_container {
+      blob_container(Magick::Blob& blob) : front(static_cast<const char*>(blob.data())), back(front + blob.length()) {}
+
+      auto begin() const { return front; }
+      auto end() const { return back; }
+
+      const char* front;
+      const char* back;
+    };
+
+  } // anonymous namespace
+
 
   device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
   : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * height),
