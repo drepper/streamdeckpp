@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     return 0;
 
   streamdeck::context ctx(argv[0]);
-  if (! ctx.any())
+  if (ctx.empty())
     error(EXIT_FAILURE, 0, "failed streamdeck::context initialization");
 
   if ("image"s == argv[1]) {

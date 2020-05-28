@@ -34,7 +34,7 @@ namespace streamdeck {
   }
 
 
-  device_type::close()
+  void device_type::close()
   {
     if (m_d != nullptr)
       hid_close(m_d);
@@ -204,6 +204,19 @@ namespace streamdeck {
   std::string gen2_device_type::get_firmware_version()
   {
     return _get_string(std::byte(0x05), 6);
+  }
+
+
+  template<size_t N = 0>
+  std::unique_ptr<device_type> context::get_device(unsigned short product_id, const char* path)
+  {
+    if constexpr (N == products.size())
+      return nullptr;
+    else {
+      if (product_id == products[N])
+        return std::make_unique<specific_device_type<products[N]>>(path);
+      return get_device<N + 1>(product_id, path);
+    }
   }
 
 

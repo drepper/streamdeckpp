@@ -243,7 +243,7 @@ namespace streamdeck {
     context(const char* path);
     ~context();
 
-    bool any() const { return ! devinfo.empty(); }
+    bool empty() const { return devinfo.empty(); }
     auto size() const { return devinfo.size(); }
     auto begin() { return devinfo.begin(); }
     auto end() { return devinfo.end(); }
@@ -256,16 +256,7 @@ namespace streamdeck {
                                                                    product_streamdeck_xl);
 
     template<size_t N = 0>
-    std::unique_ptr<device_type> get_device(unsigned short product_id, const char* path)
-    {
-      if constexpr (N == products.size())
-        return nullptr;
-      else {
-        if (product_id == products[N])
-          return std::make_unique<specific_device_type<products[N]>>(path);
-        return get_device<N + 1>(product_id, path);
-      }
-    }
+    static std::unique_ptr<device_type> get_device(unsigned short product_id, const char* path);
 
     hid_device_info* devs = nullptr;
     std::vector<std::unique_ptr<device_type>> devinfo;
