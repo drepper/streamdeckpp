@@ -21,7 +21,7 @@ namespace streamdeck {
 
 
   device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
-  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * cols),
+  : pixel_width(width), pixel_height(height), key_count(rows * cols),
     key_image_format(imgfmt), image_report_length(imgreplen), key_hflip(hflip), key_vflip(vflip),
     m_path(path), m_d(hid_open_path(m_path))
   {
@@ -87,16 +87,7 @@ namespace streamdeck {
     *it++ = std::byte(0x00);
     *it++ = std::byte(remaining > payload_length ? 0 : 1);
     *it++ = std::byte(key + 1);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
-    *it++ = std::byte(0x00);
+    std::fill_n(it, 10, std::byte(0x00));
 
     return it;
   }
@@ -114,7 +105,7 @@ namespace streamdeck {
 
   void gen1_device_type::reset()
   {
-    const std::array<std::byte,17> req = { std::byte(0x0b), std::byte(0x63) };
+    const std::array<std::byte,17> req { std::byte(0x0b), std::byte(0x63) };
     send_report(req);
   }
 
@@ -130,7 +121,7 @@ namespace streamdeck {
   {
     std::array<std::byte,17> buf { cmd };
     auto len = get_report(buf);
-    return len > 5 ? std::string(reinterpret_cast<char*>(buf.data()) + 5) : "";
+    return len > 5 ? std::string(reinterpret_cast<const char*>(buf.data()) + 5) : "";
   }
 
 
@@ -175,7 +166,7 @@ namespace streamdeck {
 
   void gen2_device_type::reset()
   {
-    const std::array<std::byte,32> req = { std::byte(0x03), std::byte(0x02) };
+    const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x02) };
     send_report(req);
   }
 
@@ -191,7 +182,7 @@ namespace streamdeck {
   {
     std::array<std::byte,32> buf { cmd };
     auto len = get_report(buf);
-    return len > off ? std::string(reinterpret_cast<char*>(buf.data()) + off) : "";
+    return len > off ? std::string(reinterpret_cast<const char*>(buf.data()) + off) : "";
   }
 
 

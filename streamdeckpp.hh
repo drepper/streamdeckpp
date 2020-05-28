@@ -4,10 +4,22 @@
 #include <memory>
 #include <ranges>
 #include <vector>
+#include <version>
+#if !__has_include(<experimental/array>)
+# error "need <experimental/array> header"
+#endif
 #include <experimental/array>
 
 #include <error.h>
 #include <hidapi.h>
+
+static_assert(__cpp_static_assert >= 200410L, "extended static_assert missing");
+static_assert(__cpp_concepts >= 201907L);
+static_assert(__cpp_if_constexpr >= 201606L);
+static_assert(__cpp_lib_ranges >= 201911L);
+static_assert(__cpp_lib_byte >= 201603L);
+static_assert(__cpp_lib_clamp >= 201603L);
+static_assert(__cpp_lib_make_unique >= 201304);
 
 
 namespace streamdeck {
@@ -37,8 +49,6 @@ namespace streamdeck {
     const unsigned pixel_width;
     const unsigned pixel_height;
 
-    const unsigned key_cols;
-    const unsigned key_rows;
     const unsigned key_count;
 
     const image_format_type key_image_format;
@@ -56,20 +66,16 @@ namespace streamdeck {
         return -1;
 
       payload_type buffer(image_report_length);
-      auto srcit = data.begin();
       unsigned page = 0;
-      while (srcit != data.end()) {
+      for (auto srcit = data.begin(); srcit != data.end(); ++page) {
         auto destit = add_header(buffer, key, data.end() - srcit, page);
         while (srcit != data.end() && destit != buffer.end())
           *destit++ = std::byte(*srcit++);
 
-        while (destit != buffer.end())
-          *destit++ = std::byte(0);
+        std::fill(destit, buffer.end(), std::byte(0));
 
-        if (int r = write(buffer); r < 0)
+        if (auto r = write(buffer); r < 0)
           return r;
-
-        ++page;
       }
 
       return 0;
@@ -132,13 +138,9 @@ namespace streamdeck {
     auto read(C& data, int timeout) { return hid_read_timeout(m_d, (unsigned char*) data.data(), data.size(), timeout); }
 
   private:
-    const char* m_path;
-    hid_device* m_d;
+    const char* const m_path;
+    hid_device* const m_d;
   };
-
-
-  template<unsigned short D>
-  struct specific_device_type;
 
 
   // First generation.
@@ -197,6 +199,10 @@ namespace streamdeck {
 
     std::string _get_string(std::byte c, size_t off);
   };
+
+
+  template<unsigned short D>
+  struct specific_device_type;
 
 
   // StreamDeck Original
