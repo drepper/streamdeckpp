@@ -23,7 +23,7 @@ namespace streamdeck {
 
 
   device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
-  : pixel_width(width), pixel_height(height), key_count(rows * cols),
+  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * cols),
     key_image_format(imgfmt), key_hflip(hflip), key_vflip(vflip), image_report_length(imgreplen),
     m_path(path), m_d(hid_open_path(m_path))
   {

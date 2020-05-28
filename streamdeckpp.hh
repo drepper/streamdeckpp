@@ -50,6 +50,8 @@ namespace streamdeck {
     const unsigned pixel_width;
     const unsigned pixel_height;
 
+    const unsigned key_cols;
+    const unsigned key_rows;
     const unsigned key_count;
 
     const image_format_type key_image_format;
