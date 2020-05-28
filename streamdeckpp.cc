@@ -24,7 +24,7 @@ namespace streamdeck {
 
   device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
   : pixel_width(width), pixel_height(height), key_count(rows * cols),
-    key_image_format(imgfmt), image_report_length(imgreplen), key_hflip(hflip), key_vflip(vflip),
+    key_image_format(imgfmt), key_hflip(hflip), key_vflip(vflip), image_report_length(imgreplen),
     m_path(path), m_d(hid_open_path(m_path))
   {
   }
@@ -213,7 +213,7 @@ namespace streamdeck {
   {
     std::array<std::byte,32> buf { cmd };
     auto len = get_report(buf);
-    return len > off ? std::string(reinterpret_cast<const char*>(buf.data()) + off) : "";
+    return len >= 0 && size_t(len) > off ? std::string(reinterpret_cast<const char*>(buf.data()) + off) : "";
   }
 
 

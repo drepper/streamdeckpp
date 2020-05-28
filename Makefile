@@ -1,20 +1,26 @@
 VERSION = 1.0
 ABI = 1
 
-CC = gcc
-CXX = g++
+CXX = g++ $(CXXSTD)
 GAWK = gawk
 INSTALL = install
-LN_S = ln -s
+CAT = cat
+LN_FS = ln -fs
+SED = sed
+TAR = tar
+MV_F = mv -f
+RM_F = rm -f
+RPMBUILD = rpmbuild
 
 CXXSTD = -std=gnu++2a
 DEFINES =
 DEBUG = -g
 OPTS =
+WARN = -Wall
 INCLUDES = $(INCLUDES-$@)
 CPPFLAGS = $(INCLUDES) $(DEFINES)
-CXXFLAGS = $(CXXSTD) $(DEBUG) $(OPTS) $(CXXFLAGS-$@)
-LDFLAGS = $(DEBUG) $(OPTS) $(CXXFLAGS-$@) $(LDFLAGS-$@)
+CXXFLAGS = $(DEBUG) $(OPTS) $(CXXFLAGS-$@) $(WARN)
+LDFLAGS = $(LDFLAGS-$@)
 LIBS = $(LIBS-$@)
 
 prefix = /usr
@@ -40,16 +46,16 @@ all: streamdeck libstreamdeckpp.so libstreamdeckpp.a
 streamdeck: main.o libstreamdeckpp.a
 	$(LINK.cc) -o $@ $^ $(LIBS)
 
-main.o streamdeckpp.o: streamdeckpp.hh
+main.o streamdeckpp.o streamdeckpp.os: streamdeckpp.hh
 
 libstreamdeckpp.a: streamdeckpp.o
 	$(AR) $(ARFLAGS) $@ $?
 
 libstreamdeckpp.so: streamdeckpp.os
-	$(LINK.cc) -shared -o $@ $(LIBS-$@) $(LIBS)
+	$(LINK.cc) -shared -Wl,-h,libstreamdeckpp.so.$(ABI) -o $@ $^ $(LIBS)
 
 streamdeckpp.pc: Makefile
-	cat > $@-tmp <<EOF
+	$(CAT) > $@-tmp <<EOF
 	prefix=$(prefix)
 	includedir=$(includedir)
 	libdir=$(libdir)
@@ -63,20 +69,34 @@ streamdeckpp.pc: Makefile
 	Cflags: -I$(includedir)
 	Libs: -L$(libdir) -lstreamdeckpp
 	EOF
-	mv -f $@-tmp $@
+	$(MV_F) $@-tmp $@
+
+streamdeckpp.spec: streamdeckpp.spec.in Makefile
+	$(SED) 's/@VERSION@/$(VERSION)/;s/@ABI@/$(ABI)/' $< > $@-tmp
+	$(MV_F) $@-tmp $@
 
 install: libstreamdeckpp.a streamdeckpp.pc
 	$(INSTALL) -D -c -m 755 libstreamdeckpp.so $(DESTDIR)$(libdir)/libstreamdeckpp-$(VERSION).so
-	$(LN_S) -f libstreamdeckpp-$(VERSION).so $(DESTDIR)$(libdir)/libstreamdeckpp.so.$(ABI)
-	$(LN_S) -f libstreamdeckpp.so.$(ABI) $(DESTDIR)$(libdir)/libstreamdeckpp.so
+	$(LN_FS) libstreamdeckpp-$(VERSION).so $(DESTDIR)$(libdir)/libstreamdeckpp.so.$(ABI)
+	$(LN_FS) libstreamdeckpp.so.$(ABI) $(DESTDIR)$(libdir)/libstreamdeckpp.so
 	$(INSTALL) -D -c -m 644 libstreamdeckpp.a $(DESTDIR)$(libdir)/libstreamdeckpp.a
 	$(INSTALL) -D -c -m 644 streamdeckpp.pc $(DESTDIR)$(pcdir)/streamdeckpp.pc
 	$(INSTALL) -D -c -m 644 streamdeckpp.hh $(DESTDIR)$(includedir)/streamdeckpp.hh
 
-clean:
-	rm -f streamdeck main.o streamdeckpp.os libstreamdeckpp.so streamdeckpp.o libstreamdeckpp.a \
-	      streamdeckpp.pc
+dist: streamdeckpp.spec
+	$(LN_FS) . streamdeckpp-$(VERSION)
+	$(TAR) achf streamdeckpp-$(VERSION).tar.xz streamdeckpp-$(VERSION)/{Makefile,streamdeckpp.hh,streamdeckpp.cc,main.cc,README.md,streamdeckpp.spec,streamdeckpp.spec.in}
+	$(RM_F) streamdeckpp-$(VERSION)
 
-.PHONY: all install clean
+srpm: dist
+	$(RPMBUILD) -ts streamdeckpp-$(VERSION).tar.xz
+rpm: dist
+	$(RPMBUILD) -tb streamdeckpp-$(VERSION).tar.xz
+
+clean:
+	$(RM_F) streamdeck main.o streamdeckpp.os libstreamdeckpp.so streamdeckpp.o libstreamdeckpp.a \
+	        streamdeckpp.pc streamdeckpp.spec
+
+.PHONY: all install dist srpm rpm clean
 .SUFFIXES: .os
 .ONESHELL:
