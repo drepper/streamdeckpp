@@ -3,7 +3,7 @@ Name: streamdeckpp
 Version: @VERSION@
 Release: 1
 URL: https://github.com/drepper/streamdeckpp
-Source: streamdeckpp-%{version}.tar.xz
+Source: https://github.com/drepper/streamdeckpp/releases/download/v%{version}/streamdeckpp-%{version}.tar.xz
 License: LGPLv2
 
 %define abi @ABI@
