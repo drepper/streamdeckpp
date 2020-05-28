@@ -2,6 +2,8 @@
 
 #include <Magick++.h>
 
+using namespace std::string_literals;
+
 
 namespace streamdeck {
 
@@ -97,8 +99,20 @@ namespace streamdeck {
   {
     std::vector<bool> res(key_count);
     std::vector<std::byte> state(1 + key_count);
-    base_type::read(state);
-    std::transform(state.begin() + 1, state.end(), res.begin(), [](auto v){ return v != std::byte(0); });
+    auto n = base_type::read(state);
+    std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+    return res;
+  }
+
+
+  std::optional<std::vector<bool>> gen1_device_type::read(int timeout)
+  {
+    std::vector<bool> res(key_count);
+    std::vector<std::byte> state(1 + key_count);
+    auto n = base_type::read(state, timeout);
+    if (n == 0)
+      return std::nullopt;
+    std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
     return res;
   }
 
@@ -140,13 +154,18 @@ namespace streamdeck {
   gen2_device_type::payload_type::iterator gen2_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
   {
     auto it = buffer.begin();
-    auto this_length = std::min(payload_length, remaining);
     *it++ = std::byte(0x02);
     *it++ = std::byte(0x07);
     *it++ = std::byte(key);
-    *it++ = std::byte(remaining > payload_length ? 0 : 1);
-    *it++ = std::byte(this_length & 0xff);
-    *it++ = std::byte(this_length >> 8);
+    if (remaining > payload_length) {
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(payload_length & 0xff);
+      *it++ = std::byte(payload_length >> 8);
+    } else {
+      *it++ = std::byte(0x01);
+      *it++ = std::byte(remaining & 0xff);
+      *it++ = std::byte(remaining >> 8);
+    }
     *it++ = std::byte(page & 0xff);
     *it++ = std::byte(page >> 8);
 
@@ -158,8 +177,20 @@ namespace streamdeck {
   {
     std::vector<bool> res(key_count);
     std::vector<std::byte> state(4 + key_count);
-    base_type::read(state);
-    std::transform(state.begin() + 4, state.end(), res.begin(), [](auto v){ return v != std::byte(0); });
+    auto n = base_type::read(state);
+    std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+    return res;
+  }
+
+
+  std::optional<std::vector<bool>> gen2_device_type::read(int timeout)
+  {
+    std::vector<bool> res(key_count);
+    std::vector<std::byte> state(4 + key_count);
+    auto n = base_type::read(state, timeout);
+    if (n == 0)
+      return std::nullopt;
+    std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
     return res;
   }
 
@@ -214,17 +245,12 @@ namespace streamdeck {
   context::context(const char* path)
   {
     if (auto r = hid_init(); r < 0)
-      throw std::runtime_error("hid_init");
+      throw std::runtime_error("hid_init failed with "s + std::to_string(r));
 
     devs = hid_enumerate(vendor_elgato, 0); 
-    if (devs == nullptr)
-      throw std::runtime_error("hid_enumerate");
-
-    for (auto p = devs; p != nullptr; p = p->next) {
-      auto ap = get_device(p->product_id, p->path);
-      if (ap)
+    for (auto p = devs; p != nullptr; p = p->next)
+      if (auto ap = get_device(p->product_id, p->path); ap)
         devinfo.emplace_back(std::move(ap));
-    }
 
     Magick::InitializeMagick(path);
   }
@@ -233,7 +259,8 @@ namespace streamdeck {
   context::~context()
   {
     devinfo.clear();
-    hid_free_enumeration(devs);
+    if (devs)
+      hid_free_enumeration(devs);
     hid_exit();
   }
 

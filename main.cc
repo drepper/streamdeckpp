@@ -34,5 +34,16 @@ int main(int argc, char* argv[])
         std::cout << ' ' << s;
       std::cout << std::endl;
     }
+  } else if ("timeout"s == argv[1]) {
+    auto t = argc < 3 ? 1000 : atoi(argv[2]);
+    while (true) {
+      auto ss = ctx[0]->read(t);
+      if (ss) {
+        for (auto s : *ss)
+          std::cout << ' ' << s;
+        std::cout << std::endl;
+      } else
+        std::cout << "nothing\n";
+    }
   }
 }

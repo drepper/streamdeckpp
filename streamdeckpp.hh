@@ -19,7 +19,8 @@ static_assert(__cpp_if_constexpr >= 201606L);
 static_assert(__cpp_lib_ranges >= 201911L);
 static_assert(__cpp_lib_byte >= 201603L);
 static_assert(__cpp_lib_clamp >= 201603L);
-static_assert(__cpp_lib_make_unique >= 201304);
+static_assert(__cpp_lib_make_unique >= 201304L);
+static_assert(__cpp_lib_optional >= 201606L);
 
 
 namespace streamdeck {
@@ -87,6 +88,8 @@ namespace streamdeck {
 
 
     virtual std::vector<bool> read() = 0;
+
+    virtual std::optional<std::vector<bool>> read(int timeout) = 0;
 
     virtual void reset() = 0;
 
@@ -159,6 +162,8 @@ namespace streamdeck {
 
     std::vector<bool> read() override final;
 
+    std::optional<std::vector<bool>> read(int timeout = -1) override final;
+
     void reset() override final;
 
     std::string get_serial_number() override final;
@@ -187,6 +192,8 @@ namespace streamdeck {
     payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
 
     std::vector<bool> read() override final;
+
+    std::optional<std::vector<bool>> read(int timeout = -1) override final;
 
     void reset() override final;
 
