@@ -61,7 +61,7 @@ streamdeckpp.pc: Makefile
 	libdir=$(libdir)
 
 	Name: StreamDeck++
-	Decription: C++ Library to interace with StreamDeck devices
+	Description: C++ Library to interace with StreamDeck devices
 	Version: $(VERSION)
 	URL: https://github.com/drepper/streamdeckpp
 	Requires: $(IFACEPKGS)
