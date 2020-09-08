@@ -12,7 +12,7 @@ MV_F = mv -f
 RM_F = rm -f
 RPMBUILD = rpmbuild
 
-CXXSTD = -std=gnu++2a
+CXXSTD = -std=gnu++20
 DEFINES =
 DEBUG = -g
 OPTS =

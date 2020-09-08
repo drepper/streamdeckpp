@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cinttypes>
 #include <cstdlib>
 #include <iostream>
@@ -131,7 +132,7 @@ namespace streamdeck {
     auto write(const unsigned char* data, size_t len) { return hid_write(m_d, data, len); }
     template<typename C>
     requires std::ranges::contiguous_range<C>
-    auto write(const C& data) { return hid_write(m_d, (const unsigned char*) data.data(), data.size()); }
+    auto write(const C& data) { assert(data.size() == image_report_length); return hid_write(m_d, (const unsigned char*) data.data(), image_report_length); }
 
     auto read(unsigned char* data, size_t len) { return hid_read(m_d, data, len); }
     template<typename C>
@@ -153,7 +154,7 @@ namespace streamdeck {
     using base_type = device_type;
 
     const unsigned image_report_length;
-    static constexpr unsigned header_length = 8;
+    static constexpr unsigned header_length = 16;
     const unsigned payload_length;
 
     gen1_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, unsigned imgreplen, bool hflip, bool vflip)
@@ -216,7 +217,7 @@ namespace streamdeck {
 
   // StreamDeck Original
   template<>
-  struct specific_device_type<product_streamdeck_original> : public gen1_device_type {
+  struct specific_device_type<product_streamdeck_original> final : public gen1_device_type {
     using base_type = gen1_device_type;
 
     static constexpr unsigned image_report_length = 8191;
@@ -227,7 +228,7 @@ namespace streamdeck {
 
   // StreamDeck Original V2
   template<>
-  struct specific_device_type<product_streamdeck_original_v2> : public gen2_device_type {
+  struct specific_device_type<product_streamdeck_original_v2> final : public gen2_device_type {
     using base_type = gen2_device_type;
 
     specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3) {}
@@ -236,7 +237,7 @@ namespace streamdeck {
 
   // StreamDeck Mini
   template<>
-  struct specific_device_type<product_streamdeck_mini> : public gen1_device_type {
+  struct specific_device_type<product_streamdeck_mini> final : public gen1_device_type {
     using base_type = gen1_device_type;
 
     static constexpr unsigned image_report_length = 1024;
@@ -247,7 +248,7 @@ namespace streamdeck {
 
   // StreamDeck XL
   template<>
-  struct specific_device_type<product_streamdeck_xl> : public gen2_device_type {
+  struct specific_device_type<product_streamdeck_xl> final : public gen2_device_type {
     using base_type = gen2_device_type;
 
     specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4) {}

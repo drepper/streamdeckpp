@@ -15,8 +15,8 @@ int main(int argc, char* argv[])
     error(EXIT_FAILURE, 0, "failed streamdeck::context initialization");
 
   if ("image"s == argv[1]) {
-    int key = argc == 1 ? 0 : atoi(argv[2]);
-    const char* fname = argc < 3 ? "test.jpg" : argv[3];
+    int key = argc <= 2 ? 0 : atoi(argv[2]);
+    const char* fname = argc <= 3 ? "test.jpg" : argv[3];
     ctx[0]->set_key_image(key, fname);
   } else if ("reset"s == argv[1])
     ctx[0]->reset();

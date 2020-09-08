@@ -76,6 +76,7 @@ namespace streamdeck {
     Magick::Blob blob;
     image.write(&blob);
 
+    std::cout << "blob size = " << blob.length() << std::endl;
     return set_key_image(key, blob_container(blob));
   }
 
