@@ -15,7 +15,7 @@ RPMBUILD = rpmbuild
 CXXSTD = -std=gnu++20
 DEFINES =
 DEBUG = -g
-OPTS =
+OPTS = -O0
 WARN = -Wall
 INCLUDES = $(INCLUDES-$@)
 CPPFLAGS = $(INCLUDES) $(DEFINES)

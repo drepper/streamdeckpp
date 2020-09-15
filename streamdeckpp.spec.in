@@ -1,7 +1,7 @@
 Summary: C++ Library to interface with StreamDeck devices
 Name: streamdeckpp
 Version: @VERSION@
-Release: 4
+Release: 5
 URL: https://github.com/drepper/streamdeckpp
 Source: https://github.com/drepper/streamdeckpp/archive/streamdeckpp-@VERSION@.tar.xz
 License: LGPLv2
