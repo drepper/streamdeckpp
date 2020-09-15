@@ -78,7 +78,6 @@ namespace streamdeck {
     Magick::Blob blob;
     image.write(&blob);
 
-    std::cout << "blob size = " << blob.length() << std::endl;
     return set_key_image(key, blob_container(blob));
   }
 
@@ -245,7 +244,7 @@ namespace streamdeck {
   }
 
 
-  context::context(const char* path)
+  context::context()
   {
     if (auto r = hid_init(); r < 0)
       throw std::runtime_error("hid_init failed with "s + std::to_string(r));
@@ -255,7 +254,7 @@ namespace streamdeck {
       if (auto ap = get_device(p->product_id, p->path); ap)
         devinfo.emplace_back(std::move(ap));
 
-    Magick::InitializeMagick(path);
+    Magick::InitializeMagick(nullptr);
   }
 
 

@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
   if (argc == 1)
     return 0;
 
-  streamdeck::context ctx(argv[0]);
+  streamdeck::context ctx;
   if (ctx.empty())
     error(EXIT_FAILURE, 0, "failed streamdeck::context initialization");
 

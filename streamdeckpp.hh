@@ -256,7 +256,7 @@ namespace streamdeck {
 
 
   struct context {
-    context(const char* path);
+    context();
     ~context();
 
     bool empty() const { return devinfo.empty(); }
