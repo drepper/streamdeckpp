@@ -27,6 +27,8 @@ namespace streamdeck {
     key_image_format(imgfmt), key_hflip(hflip), key_vflip(vflip), image_report_length(imgreplen),
     m_path(path), m_d(hid_open_path(m_path))
   {
+    if (m_d == nullptr)
+      throw std::runtime_error("cannot open device: ");
   }
 
 
