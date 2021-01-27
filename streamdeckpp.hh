@@ -1,3 +1,6 @@
+#ifndef _STREAMDECKPP_HH
+#define _STREAMDECKPP_HH 1
+
 #include <cassert>
 #include <cinttypes>
 #include <cstdlib>
@@ -86,6 +89,7 @@ namespace streamdeck {
     }
 
     int set_key_image(unsigned key, const char* fname);
+    int set_key_image(unsigned row, unsigned col, const char* fname) { return set_key_image(row * key_cols + col, fname); }
 
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
 
@@ -165,3 +169,5 @@ namespace streamdeck {
   };
 
 } // namespace streamdeck
+
+#endif // streamdeckpp.hh
