@@ -66,28 +66,6 @@ namespace streamdeck {
 
     using payload_type = std::vector<std::byte>;
 
-    template<typename C>
-    int set_key_image(unsigned key, const C& data)
-    {
-      if (key > key_count)
-        return -1;
-
-      payload_type buffer(image_report_length);
-      unsigned page = 0;
-      for (auto srcit = data.begin(); srcit != data.end(); ++page) {
-        auto destit = add_header(buffer, key, data.end() - srcit, page);
-        while (srcit != data.end() && destit != buffer.end())
-          *destit++ = std::byte(*srcit++);
-
-        std::fill(destit, buffer.end(), std::byte(0));
-
-        if (auto r = write(buffer); r < 0)
-          return r;
-      }
-
-      return 0;
-    }
-
     int set_key_image(unsigned key, const char* fname);
     int set_key_image(unsigned row, unsigned col, const char* fname) { return set_key_image(row * key_cols + col, fname); }
 
@@ -146,6 +124,28 @@ namespace streamdeck {
     template<typename C>
     requires std::ranges::contiguous_range<C>
     auto read(C& data, int timeout) { return hid_read_timeout(m_d, (unsigned char*) data.data(), data.size(), timeout); }
+
+    template<typename C>
+    int set_key_image(unsigned key, const C& data)
+    {
+      if (key > key_count)
+        return -1;
+
+      payload_type buffer(image_report_length);
+      unsigned page = 0;
+      for (auto srcit = data.begin(); srcit != data.end(); ++page) {
+        auto destit = add_header(buffer, key, data.end() - srcit, page);
+        while (srcit != data.end() && destit != buffer.end())
+          *destit++ = std::byte(*srcit++);
+
+        std::fill(destit, buffer.end(), std::byte(0));
+
+        if (auto r = write(buffer); r < 0)
+          return r;
+      }
+
+      return 0;
+    }
 
   private:
     const char* const m_path;

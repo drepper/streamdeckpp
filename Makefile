@@ -1,4 +1,4 @@
-VERSION = 1.2
+VERSION = 1.3
 ABI = 1
 
 CXX = g++ $(CXXSTD)
