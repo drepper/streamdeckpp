@@ -66,3 +66,12 @@ For linking use
 Note: when linking statically one has to pass `--static` to `pkg-config`.
 
 
+
+Quirk
+-----
+
+The firmware on the StreamDeck handles black-and-white images used for the buttons differently.
+Instead of filling the full button only a half-high image is used, duplicated horizontally to
+fill the width.  Under this the last full color image that was uploaded is used.
+
+If this is not desired then imagine should contain at least one colored pixel.
