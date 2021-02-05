@@ -99,6 +99,13 @@ namespace streamdeck {
   }
 
 
+  int device_type::set_key_image(unsigned key, const char* fname)
+  {
+    Magick::Image file(fname);
+    return set_key_image(key, std::move(file));
+  }
+
+
   namespace {
 
     // First generation.
