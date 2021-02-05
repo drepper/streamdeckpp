@@ -16,6 +16,8 @@
 
 #include <error.h>
 #include <hidapi.h>
+#include <Magick++.h>
+
 
 static_assert(__cpp_static_assert >= 200410L, "extended static_assert missing");
 static_assert(__cpp_concepts >= 201907L);
@@ -66,7 +68,8 @@ namespace streamdeck {
 
     using payload_type = std::vector<std::byte>;
 
-    int set_key_image(unsigned key, const char* fname);
+    int set_key_image(unsigned key, Magick::Image&& image);
+    int set_key_image(unsigned key, const char* fname) { Magick::Image file(fname); return set_key_image(key, std::move(file)); }
     int set_key_image(unsigned row, unsigned col, const char* fname) { return set_key_image(row * key_cols + col, fname); }
 
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
@@ -126,26 +129,7 @@ namespace streamdeck {
     auto read(C& data, int timeout) { return hid_read_timeout(m_d, (unsigned char*) data.data(), data.size(), timeout); }
 
     template<typename C>
-    int set_key_image(unsigned key, const C& data)
-    {
-      if (key > key_count)
-        return -1;
-
-      payload_type buffer(image_report_length);
-      unsigned page = 0;
-      for (auto srcit = data.begin(); srcit != data.end(); ++page) {
-        auto destit = add_header(buffer, key, data.end() - srcit, page);
-        while (srcit != data.end() && destit != buffer.end())
-          *destit++ = std::byte(*srcit++);
-
-        std::fill(destit, buffer.end(), std::byte(0));
-
-        if (auto r = write(buffer); r < 0)
-          return r;
-      }
-
-      return 0;
-    }
+    int set_key_image(unsigned key, const C& data);
 
   private:
     const char* const m_path;

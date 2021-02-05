@@ -28,6 +28,7 @@ Summary: Files needed for development with streamdeckpp
 License: LGPLv2
 Requires: streamdeckpp = %{version}-%{release}
 Requires: hidapi-devel
+Requires: ImageMagick-c++-devel
 
 %description devel
 The streamdeckpp-devel package contains the files to develop code using the

@@ -1,4 +1,4 @@
-VERSION = 1.3
+VERSION = 1.4
 ABI = 1
 
 CXX = g++ $(CXXSTD)
@@ -32,7 +32,7 @@ IFACEPKGS = hidapi-libusb
 DEPPKGS = Magick++
 ALLPKGS = $(IFACEPKGS) $(DEPPKGS)
 
-INCLUDES-main.o = $(shell pkg-config --cflags $(IFACEPKGS))
+INCLUDES-main.o = $(shell pkg-config --cflags $(ALLPKGS))
 INCLUDES-streamdeckpp.o = $(shell pkg-config --cflags $(ALLPKGS))
 INCLUDES-streamdeckpp.os = $(shell pkg-config --cflags $(ALLPKGS))
 LIBS-streamdeck = $(shell pkg-config --libs $(ALLPKGS))

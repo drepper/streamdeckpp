@@ -1,7 +1,5 @@
 #include "streamdeckpp.hh"
 
-#include <Magick++.h>
-
 using namespace std::string_literals;
 
 
@@ -43,10 +41,31 @@ namespace streamdeck {
   }
 
 
-  int device_type::set_key_image(unsigned key, const char* fname)
+  template<typename C>
+  int device_type::set_key_image(unsigned key, const C& data)
   {
-    Magick::Image image(fname);
+    if (key > key_count)
+      return -1;
 
+    payload_type buffer(image_report_length);
+    unsigned page = 0;
+    for (auto srcit = data.begin(); srcit != data.end(); ++page) {
+      auto destit = add_header(buffer, key, data.end() - srcit, page);
+      while (srcit != data.end() && destit != buffer.end())
+        *destit++ = std::byte(*srcit++);
+
+      std::fill(destit, buffer.end(), std::byte(0));
+
+      if (auto r = write(buffer); r < 0)
+        return r;
+    }
+
+    return 0;
+  }
+
+
+  int device_type::set_key_image(unsigned key, Magick::Image&& image)
+  {
     if (key_hflip)
       image.transpose();
     if (key_vflip)
