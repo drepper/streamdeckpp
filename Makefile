@@ -51,8 +51,8 @@ main.o streamdeckpp.o streamdeckpp.os: streamdeckpp.hh
 libstreamdeckpp.a: streamdeckpp.o
 	$(AR) $(ARFLAGS) $@ $?
 
-libstreamdeckpp.so: streamdeckpp.os
-	$(LINK.cc) -shared -Wl,-h,libstreamdeckpp.so.$(ABI) -o $@ $^ $(LIBS)
+libstreamdeckpp.so: streamdeckpp.os libstreamdeckpp.map
+	$(LINK.cc) -shared -Wl,-h,libstreamdeckpp.so.$(ABI) -o $@ $(filter %.os,$^) $(LIBS) -Wl,-version-script,libstreamdeckpp.map
 
 streamdeckpp.pc: Makefile
 	$(CAT) > $@-tmp <<EOF
@@ -85,7 +85,7 @@ install: libstreamdeckpp.a streamdeckpp.pc
 
 dist: streamdeckpp.spec
 	$(LN_FS) . streamdeckpp-$(VERSION)
-	$(TAR) achf streamdeckpp-$(VERSION).tar.xz streamdeckpp-$(VERSION)/{Makefile,streamdeckpp.hh,streamdeckpp.cc,main.cc,README.md,streamdeckpp.spec,streamdeckpp.spec.in}
+	$(TAR) achf streamdeckpp-$(VERSION).tar.xz streamdeckpp-$(VERSION)/{Makefile,streamdeckpp.hh,streamdeckpp.cc,main.cc,libstreamdeckpp.map,README.md,streamdeckpp.spec,streamdeckpp.spec.in}
 	$(RM_F) streamdeckpp-$(VERSION)
 
 srpm: dist
