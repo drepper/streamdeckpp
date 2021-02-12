@@ -69,6 +69,7 @@ namespace streamdeck {
     using payload_type = std::vector<std::byte>;
 
     int set_key_image(unsigned key, Magick::Image&& image);
+    int set_key_image(unsigned key, const Magick::Image& image) { return set_key_image(key, Magick::Image(image)); }
     int set_key_image(unsigned key, const char* fname);
     int set_key_image(unsigned row, unsigned col, const char* fname) { return set_key_image(row * key_cols + col, fname); }
 
