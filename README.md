@@ -37,16 +37,21 @@ If more than one device is reported but only one is needed the others should be 
 to the `close` member function.
 
 The `set_key_image` member function allows to set an image for a key.  One variant take a file name in
-which case the ImageMaick libraries are used to transform the image as required by the device.  The image will be scale and transformed, if necessary, and converted to the right format.  Theoretically it is even possible
+which case the ImageMagick libraries are used to transform the image as required by the device.
+The image will be scale and transformed, if necessary, and converted to the right format.  Theoretically it is even possible
 to use SVG files but the handling of this type of files at least for now does not work correctly.  Better
 use a bitmap format, lossless or lossy.
 
-The second variant of the interface take an container with the image data stored in it.  In this case the
+The second variant allows to pass an `Magick::Image` object, as constant reference or a rvalue.  This
+allows to generate the image on-the-fly before displaying it.
+
+The third variant of the interface take an container with the image data stored in it.  In this case the
 library only takes care of the transport of the data to the device.  The caller is responsible to provide
 the data in the correct format.
 
 To read the state of the device the `read` member function should be used.  There is no descriptor-based
-interface which can be used with `epoll` etc.  This could be constructed with a helper thread and a pipe.  The provided `read` interface returns a vector with the current state of the button *after* a change.  I.e., the
+interface which can be used with `epoll` etc.  This could be constructed with a helper thread and a pipe.
+The provided `read` interface returns a vector with the current state of the button *after* a change.  I.e., the
 `read` interface is delayed until a button a pressed or released.  The `read` variant with a `timeout`\
 parameter returns an `optional` object which, in case the timeout is reached, contains nothing.
 
