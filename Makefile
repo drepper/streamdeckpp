@@ -1,4 +1,4 @@
-VERSION = 1.5
+VERSION = 1.6
 ABI = 1
 
 CXX = g++ $(CXXSTD)
@@ -67,7 +67,7 @@ streamdeckpp.pc: Makefile
 	Requires: $(IFACEPKGS)
 	Requires.private: $(DEPPKGS)
 	Cflags: -I$(includedir)
-	Libs: -L$(libdir) -lstreamdeckpp
+	Libs: -lstreamdeckpp
 	EOF
 	$(MV_F) $@-tmp $@
 

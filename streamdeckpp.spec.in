@@ -67,6 +67,7 @@ mkdir -p ${RPM_BUILD_ROOT}%{_prefix}
 
 %files devel
 %defattr(-,root,root)
+%{_includedir}/streamdeckpp-%{version}
 %{_includedir}/streamdeckpp-%{version}/streamdeckpp.hh
 %{_libdir}/libstreamdeckpp.so
 %{_libdir}/pkgconfig/streamdeckpp.pc

@@ -68,10 +68,17 @@ namespace streamdeck {
 
     using payload_type = std::vector<std::byte>;
 
+    int register_image(Magick::Image&& image);
+    int register_image(const Magick::Image& image) { return register_image(Magick::Image(image)); }
+    int register_image(const char* fname);
+
     int set_key_image(unsigned key, Magick::Image&& image);
     int set_key_image(unsigned key, const Magick::Image& image) { return set_key_image(key, Magick::Image(image)); }
     int set_key_image(unsigned key, const char* fname);
     int set_key_image(unsigned row, unsigned col, const char* fname) { return set_key_image(row * key_cols + col, fname); }
+
+    int set_key_image(unsigned key, int handle);
+    int set_key_image(unsigned row, unsigned col, int handle) { return set_key_image(row * key_cols + col, handle); }
 
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
 
@@ -133,8 +140,12 @@ namespace streamdeck {
     int set_key_image(unsigned key, const C& data);
 
   private:
+    Magick::Blob reformat(Magick::Image&& image);
+
     const char* const m_path;
     hid_device* const m_d;
+
+    std::vector<Magick::Blob> registered;
   };
 
 

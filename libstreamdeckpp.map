@@ -1,0 +1,18 @@
+STREAMDECKPP_1.0 {
+  global:
+    _ZN10streamdeck7contextC1Ev;
+    _ZN10streamdeck7contextD1Ev;
+    _ZN10streamdeck11device_type13set_key_imageEjPKc;
+  local:
+    *;	
+};
+STREAMDECKPP_1.4 {
+  global:
+    _ZN10streamdeck11device_type13set_key_imageEjON6Magick5ImageE;
+} STREAMDECKPP_1.0;
+STREAMDECKPP_1.6 {
+  global:
+    _ZN10streamdeck11device_type14register_imageEON6Magick5ImageE;
+    _ZN10streamdeck11device_type14register_imageEPKc;
+    _ZN10streamdeck11device_type13set_key_imageEji;
+} STREAMDECKPP_1.4;

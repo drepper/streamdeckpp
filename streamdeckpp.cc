@@ -41,30 +41,7 @@ namespace streamdeck {
   }
 
 
-  template<typename C>
-  int device_type::set_key_image(unsigned key, const C& data)
-  {
-    if (key > key_count)
-      return -1;
-
-    payload_type buffer(image_report_length);
-    unsigned page = 0;
-    for (auto srcit = data.begin(); srcit != data.end(); ++page) {
-      auto destit = add_header(buffer, key, data.end() - srcit, page);
-      while (srcit != data.end() && destit != buffer.end())
-        *destit++ = std::byte(*srcit++);
-
-      std::fill(destit, buffer.end(), std::byte(0));
-
-      if (auto r = write(buffer); r < 0)
-        return r;
-    }
-
-    return 0;
-  }
-
-
-  int device_type::set_key_image(unsigned key, Magick::Image&& image)
+  Magick::Blob device_type::reformat(Magick::Image&& image)
   {
     if (key_hflip)
       image.transpose();
@@ -92,17 +69,64 @@ namespace streamdeck {
     else if (key_image_format == image_format_type::bmp)
       image.magick("BMP");
 
-    Magick::Blob blob;
-    image.write(&blob);
+    Magick::Blob res;
+    image.write(&res);
+    return res;
+  }
 
+
+  int device_type::register_image(Magick::Image&& image)
+  {
+    registered.emplace_back(reformat(std::move(image)));
+    return registered.size() - 1;
+  }
+
+
+  int device_type::register_image(const char* fname)
+  {
+    return register_image(Magick::Image(fname));
+  }
+
+
+  template<typename C>
+  int device_type::set_key_image(unsigned key, const C& data)
+  {
+    if (key > key_count)
+      return -1;
+
+    payload_type buffer(image_report_length);
+    unsigned page = 0;
+    for (auto srcit = data.begin(); srcit != data.end(); ++page) {
+      auto destit = add_header(buffer, key, data.end() - srcit, page);
+      while (srcit != data.end() && destit != buffer.end())
+        *destit++ = std::byte(*srcit++);
+
+      std::fill(destit, buffer.end(), std::byte(0));
+
+      if (auto r = write(buffer); r < 0)
+        return r;
+    }
+
+    return 0;
+  }
+
+
+  int device_type::set_key_image(unsigned key, Magick::Image&& image)
+  {
+    auto blob(reformat(std::move(image)));
     return set_key_image(key, blob_container(blob));
   }
 
 
   int device_type::set_key_image(unsigned key, const char* fname)
   {
-    Magick::Image file(fname);
-    return set_key_image(key, std::move(file));
+    return set_key_image(key, Magick::Image(fname));
+  }
+
+
+  int device_type::set_key_image(unsigned key, int handle)
+  {
+    return set_key_image(key, blob_container(registered[handle]));
   }
 
 
