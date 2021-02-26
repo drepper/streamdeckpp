@@ -291,7 +291,9 @@ namespace streamdeck {
     {
       std::vector<bool> res(key_count);
       std::vector<std::byte> state(4 + key_count);
-      auto n = base_type::read(state);
+      int n;
+      while ((n = base_type::read(state)) < 4)
+	continue;
       std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
       return res;
     }

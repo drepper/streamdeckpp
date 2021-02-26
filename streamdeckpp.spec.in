@@ -77,6 +77,8 @@ mkdir -p ${RPM_BUILD_ROOT}%{_prefix}
 %{_libdir}/libstreamdeckpp.a
 
 %changelog
+* Fri Feb 26 2021 Ulrich Drepper <drepper@gmail.com> 1.8-1
+- HID read can return empty
 * Mon Feb 22 2021 Ulrich Drepper <drepper@gmail.com> 1.7-1
 - add interfaces to register image and use them
 * Fri Feb 12 2021 Ulrich Drepper <drepper@gmail.com> 1.5-1
