@@ -55,6 +55,11 @@ The provided `read` interface returns a vector with the current state of the but
 `read` interface is delayed until a button a pressed or released.  The `read` variant with a `timeout`\
 parameter returns an `optional` object which, in case the timeout is reached, contains nothing.
 
+Debian/Ubuntu dependencies
+--------------------------
+```
+$ sudo apt-get install libmagick++-dev libhidapi-dev
+```
 
 Using the library
 -----------------
