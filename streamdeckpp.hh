@@ -1,23 +1,18 @@
 #ifndef _STREAMDECKPP_HH
-#define _STREAMDECKPP_HH 1
+# define _STREAMDECKPP_HH 1
 
-#include <cassert>
-#include <cinttypes>
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <ranges>
-#include <vector>
-#include <version>
-#if !__has_include(<experimental/array>)
-# error "need <experimental/array> header"
-#endif
-#include <experimental/array>
+# include <cassert>
+# include <cstdint>
+# include <cstdlib>
+# include <memory>
+# include <optional>
+# include <vector>
+# include <version>
+# include <experimental/array>
 
-#include <error.h>
-#include <hidapi.h>
-#include <Magick++.h>
-
+# include <Magick++.h>
+# include <error.h>
+# include <hidapi.h>
 
 static_assert(__cpp_static_assert >= 200410L, "extended static_assert missing");
 static_assert(__cpp_concepts >= 201907L);
@@ -28,7 +23,6 @@ static_assert(__cpp_lib_clamp >= 201603L);
 static_assert(__cpp_lib_make_unique >= 201304L);
 static_assert(__cpp_lib_optional >= 201606L);
 
-
 namespace streamdeck {
 
   static constexpr uint16_t vendor_elgato = 0x0fd9;
@@ -37,21 +31,20 @@ namespace streamdeck {
   static constexpr uint16_t product_streamdeck_original_v2 = 0x006d;
   static constexpr uint16_t product_streamdeck_mini = 0x0063;
   static constexpr uint16_t product_streamdeck_xl = 0x006c;
-
+  static constexpr uint16_t product_streamdeckplus = 0x0084;
+  static constexpr uint16_t product_streamdeckplus_xl = 0x00c6;
 
   struct device_type {
     enum struct image_format_type { bmp, jpeg };
 
-    device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip);
+    device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip, unsigned rotate);
 
-    ~device_type();
-
+    virtual ~device_type();
 
     bool connected() const { return m_d != nullptr; }
     auto path() const { return m_path; }
 
     void close();
-
 
     const unsigned pixel_width;
     const unsigned pixel_height;
@@ -63,8 +56,8 @@ namespace streamdeck {
     const image_format_type key_image_format;
     const bool key_hflip;
     const bool key_vflip;
+    const unsigned key_rotate;
     const unsigned image_report_length;
-
 
     using payload_type = std::vector<std::byte>;
 
@@ -82,7 +75,6 @@ namespace streamdeck {
     int set_key_image(unsigned row, unsigned col, int handle) { return set_key_image(row * key_cols + col, handle); }
 
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
-
 
     virtual std::vector<bool> read() = 0;
 
@@ -112,30 +104,45 @@ namespace streamdeck {
       _set_brightness(p);
     }
 
-
     auto send_report(const unsigned char* data, size_t len) { return hid_send_feature_report(m_d, data, len); }
     template<typename C>
-    requires std::ranges::contiguous_range<C>
-    auto send_report(const C& data) { return hid_send_feature_report(m_d, (const unsigned char*) data.data(), data.size()); }
+      requires std::ranges::contiguous_range<C>
+    auto send_report(const C& data)
+    {
+      return hid_send_feature_report(m_d, (const unsigned char*) data.data(), data.size());
+    }
 
     auto get_report(unsigned char* data, size_t len) { return hid_get_feature_report(m_d, data, len); }
     template<typename C>
-    requires std::ranges::contiguous_range<C>
-    auto get_report(C& data) { return hid_get_feature_report(m_d, (unsigned char*) data.data(), data.size()); }
+      requires std::ranges::contiguous_range<C>
+    auto get_report(C& data)
+    {
+      return hid_get_feature_report(m_d, (unsigned char*) data.data(), data.size());
+    }
 
     auto write(const unsigned char* data, size_t len) { return hid_write(m_d, data, len); }
     template<typename C>
-    requires std::ranges::contiguous_range<C>
-    auto write(const C& data) { assert(data.size() == image_report_length); return hid_write(m_d, (const unsigned char*) data.data(), image_report_length); }
+      requires std::ranges::contiguous_range<C>
+    auto write(const C& data)
+    {
+      assert(data.size() == image_report_length);
+      return hid_write(m_d, (const unsigned char*) data.data(), image_report_length);
+    }
 
     auto read(unsigned char* data, size_t len) { return hid_read(m_d, data, len); }
     template<typename C>
-    requires std::ranges::contiguous_range<C>
-    auto read(C& data) { return hid_read(m_d, (unsigned char*) data.data(), data.size()); }
+      requires std::ranges::contiguous_range<C>
+    auto read(C& data)
+    {
+      return hid_read(m_d, (unsigned char*) data.data(), data.size());
+    }
     auto read(unsigned char* data, size_t len, int timeout) { return hid_read_timeout(m_d, data, len, timeout); }
     template<typename C>
-    requires std::ranges::contiguous_range<C>
-    auto read(C& data, int timeout) { return hid_read_timeout(m_d, (unsigned char*) data.data(), data.size(), timeout); }
+      requires std::ranges::contiguous_range<C>
+    auto read(C& data, int timeout)
+    {
+      return hid_read_timeout(m_d, (unsigned char*) data.data(), data.size(), timeout);
+    }
 
     template<typename C>
     int set_key_image(unsigned key, const C& data);
@@ -148,7 +155,6 @@ namespace streamdeck {
 
     std::vector<Magick::Blob> registered;
   };
-
 
   struct context {
     context();

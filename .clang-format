@@ -1,0 +1,36 @@
+NamespaceIndentation: All
+IndentWidth: 2
+BracedInitializerIndentWidth: 2
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: True
+  BeforeCatch: True
+  AfterCaseLabel: True
+KeepEmptyLines:
+  AtStartOfBlock: True
+MaxEmptyLinesToKeep: 2
+ColumnLimit: 300
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+IndentPPDirectives: AfterHash
+PPIndentWidth: 1
+PointerAlignment: Left
+SpaceAfterTemplateKeyword: False
+BreakTemplateDeclarations: Yes
+IncludeCategories:
+  - Regex: '"[^"/]+"'
+    Priority: 1
+  - Regex: '"[^"/]+/[^"]+"'
+    Priority: 2
+    SortPriority: 1
+  - Regex: '<[^/]+>'
+    Priority: 3
+  - Regex: '<{sys|netinet|net}/.+>'
+    Priority: 4
+    SortPriority: 3
+  - Regex: '<[^/]+/.+>'
+    Priority: 5
+IncludeBlocks: Preserve
+SpaceAfterLogicalNot: True
+SpaceAfterCStyleCast: True
+AlignAfterOpenBracket: BlockIndent

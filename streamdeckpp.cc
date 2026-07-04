@@ -1,7 +1,11 @@
 #include "streamdeckpp.hh"
+#include "hidapi.h"
+
+#include <array>
+#include <print>
+#include <string>
 
 using namespace std::string_literals;
-
 
 namespace streamdeck {
 
@@ -19,20 +23,26 @@ namespace streamdeck {
 
   } // anonymous namespace
 
-
-  device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip)
-  : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * cols),
-    key_image_format(imgfmt), key_hflip(hflip), key_vflip(vflip), image_report_length(imgreplen),
-    m_path(path), m_d(hid_open_path(m_path))
+  device_type::device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, image_format_type imgfmt, unsigned imgreplen, bool hflip, bool vflip, unsigned rotate)
+      : pixel_width(width), pixel_height(height), key_cols(cols), key_rows(rows), key_count(rows * cols), key_image_format(imgfmt), key_hflip(hflip), key_vflip(vflip), key_rotate(rotate), image_report_length(imgreplen), m_path(path), m_d(hid_open_path(m_path))
   {
-  }
+    if (m_d == nullptr) [[unlikely]] {
+      auto ws = hid_error(nullptr);
+      char buf[1000];
+      auto* wp = buf;
+      for (auto* rw = ws; *rw != 0; ++rw)
+        if (*rw < 0x80)
+          *wp++ = *rw;
+      *wp = 0;
 
+      std::println("cannot open: {}", buf);
+    }
+  }
 
   device_type::~device_type()
   {
     close();
   }
-
 
   void device_type::close()
   {
@@ -40,13 +50,14 @@ namespace streamdeck {
       hid_close(m_d);
   }
 
-
   Magick::Blob device_type::reformat(Magick::Image&& image)
   {
     if (key_hflip)
       image.transpose();
     if (key_vflip)
       image.transverse();
+    if (key_rotate != 0)
+      image.rotate(key_rotate * 90);
 
     auto size = image.size();
     if (size.width() != pixel_width || size.height() != pixel_height) {
@@ -74,19 +85,16 @@ namespace streamdeck {
     return res;
   }
 
-
   int device_type::register_image(Magick::Image&& image)
   {
     registered.emplace_back(reformat(std::move(image)));
     return registered.size() - 1;
   }
 
-
   int device_type::register_image(const char* fname)
   {
     return register_image(Magick::Image(fname));
   }
-
 
   template<typename C>
   int device_type::set_key_image(unsigned key, const C& data)
@@ -110,25 +118,21 @@ namespace streamdeck {
     return 0;
   }
 
-
   int device_type::set_key_image(unsigned key, Magick::Image&& image)
   {
     auto blob(reformat(std::move(image)));
     return set_key_image(key, blob_container(blob));
   }
 
-
   int device_type::set_key_image(unsigned key, const char* fname)
   {
     return set_key_image(key, Magick::Image(fname));
   }
 
-
   int device_type::set_key_image(unsigned key, int handle)
   {
     return set_key_image(key, blob_container(registered[handle]));
   }
-
 
   namespace {
 
@@ -141,8 +145,9 @@ namespace streamdeck {
       const unsigned payload_length;
 
       gen1_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, unsigned imgreplen, bool hflip, bool vflip)
-      : device_type(path, width, height, cols, rows, image_format_type::bmp, imgreplen, hflip, vflip), image_report_length(imgreplen), payload_length(imgreplen - header_length)
-      {}
+          : device_type(path, width, height, cols, rows, image_format_type::bmp, imgreplen, hflip, vflip, 0), image_report_length(imgreplen), payload_length(imgreplen - header_length)
+      {
+      }
 
       payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
 
@@ -162,7 +167,6 @@ namespace streamdeck {
       std::string _get_string(std::byte c);
     };
 
-
     // Second generation.
     struct gen2_device_type : public device_type {
       using base_type = device_type;
@@ -171,9 +175,7 @@ namespace streamdeck {
       static constexpr unsigned header_length = 8;
       static constexpr unsigned payload_length = image_report_length - header_length;
 
-      gen2_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows)
-      : device_type(path, width, height, cols, rows, image_format_type::jpeg, image_report_length, true, true)
-      {}
+      gen2_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, unsigned rotate) : device_type(path, width, height, cols, rows, image_format_type::jpeg, image_report_length, true, true, rotate) {}
 
       payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) override final;
 
@@ -193,7 +195,6 @@ namespace streamdeck {
       std::string _get_string(std::byte c, size_t off);
     };
 
-
     gen1_device_type::payload_type::iterator gen1_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
     {
       auto it = buffer.begin();
@@ -208,16 +209,14 @@ namespace streamdeck {
       return it;
     }
 
-
     std::vector<bool> gen1_device_type::read()
     {
       std::vector<bool> res(key_count);
       std::vector<std::byte> state(1 + key_count);
       auto n = base_type::read(state);
-      std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+      std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v) { return v != std::byte(0); });
       return res;
     }
-
 
     std::optional<std::vector<bool>> gen1_device_type::read(int timeout)
     {
@@ -226,44 +225,38 @@ namespace streamdeck {
       auto n = base_type::read(state, timeout);
       if (n == 0)
         return std::nullopt;
-      std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+      std::transform(state.begin() + 1, state.begin() + n, res.begin(), [](auto v) { return v != std::byte(0); });
       return res;
     }
 
-
     void gen1_device_type::reset()
     {
-      const std::array<std::byte,17> req { std::byte(0x0b), std::byte(0x63) };
+      const std::array<std::byte, 17> req{std::byte(0x0b), std::byte(0x63)};
       send_report(req);
     }
-
 
     void gen1_device_type::_set_brightness(std::byte p)
     {
-      const std::array<std::byte,17> req { std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p };
+      const std::array<std::byte, 17> req{std::byte(0x05), std::byte(0x55), std::byte(0xaa), std::byte(0xd1), std::byte(0x01), p};
       send_report(req);
     }
 
-
     std::string gen1_device_type::_get_string(std::byte cmd)
     {
-      std::array<std::byte,17> buf { cmd };
+      std::array<std::byte, 17> buf{cmd};
       auto len = get_report(buf);
       return len > 5 ? std::string(reinterpret_cast<const char*>(buf.data()) + 5) : "";
     }
-
 
     std::string gen1_device_type::get_serial_number()
     {
       return _get_string(std::byte(0x03));
     }
 
-
     std::string gen1_device_type::get_firmware_version()
     {
       return _get_string(std::byte(0x04));
     }
-
 
     gen2_device_type::payload_type::iterator gen2_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
     {
@@ -286,18 +279,16 @@ namespace streamdeck {
       return it;
     }
 
-
     std::vector<bool> gen2_device_type::read()
     {
       std::vector<bool> res(key_count);
       std::vector<std::byte> state(4 + key_count);
       int n;
       while ((n = base_type::read(state)) < 4)
-	continue;
-      std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+        continue;
+      std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v) { return v != std::byte(0); });
       return res;
     }
-
 
     std::optional<std::vector<bool>> gen2_device_type::read(int timeout)
     {
@@ -306,48 +297,41 @@ namespace streamdeck {
       auto n = base_type::read(state, timeout);
       if (n == 0)
         return std::nullopt;
-      std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v){ return v != std::byte(0); });
+      std::transform(state.begin() + 4, state.begin() + n, res.begin(), [](auto v) { return v != std::byte(0); });
       return res;
     }
 
-
     void gen2_device_type::reset()
     {
-      const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x02) };
+      const std::array<std::byte, 32> req{std::byte(0x03), std::byte(0x02)};
       send_report(req);
     }
-
 
     void gen2_device_type::_set_brightness(std::byte p)
     {
-      const std::array<std::byte,32> req { std::byte(0x03), std::byte(0x08), p };
+      const std::array<std::byte, 32> req{std::byte(0x03), std::byte(0x08), p};
       send_report(req);
     }
 
-
     std::string gen2_device_type::_get_string(std::byte cmd, size_t off)
     {
-      std::array<std::byte,32> buf { cmd };
+      std::array<std::byte, 32> buf{cmd};
       auto len = get_report(buf);
       return len >= 0 && size_t(len) > off ? std::string(reinterpret_cast<const char*>(buf.data()) + off) : "";
     }
-
 
     std::string gen2_device_type::get_serial_number()
     {
       return _get_string(std::byte(0x06), 2);
     }
 
-
     std::string gen2_device_type::get_firmware_version()
     {
       return _get_string(std::byte(0x05), 6);
     }
 
-
     template<unsigned short D>
     struct specific_device_type;
-
 
     // StreamDeck Original
     template<>
@@ -359,15 +343,13 @@ namespace streamdeck {
       specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, image_report_length, true, true) {}
     };
 
-
     // StreamDeck Original V2
     template<>
     struct specific_device_type<product_streamdeck_original_v2> final : public gen2_device_type {
       using base_type = gen2_device_type;
 
-      specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3) {}
+      specific_device_type(const char* path) : base_type(path, 72, 72, 5, 3, 0) {}
     };
-
 
     // StreamDeck Mini
     template<>
@@ -376,23 +358,43 @@ namespace streamdeck {
 
       static constexpr unsigned image_report_length = 1024;
 
-      specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_report_length, false, true) {}
+      specific_device_type(const char* path) : base_type(path, 80, 80, 3, 2, image_report_length, true, true) {}
     };
-
 
     // StreamDeck XL
     template<>
     struct specific_device_type<product_streamdeck_xl> final : public gen2_device_type {
       using base_type = gen2_device_type;
 
-      specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4) {}
+      specific_device_type(const char* path) : base_type(path, 96, 96, 8, 4, 0) {}
     };
 
+    // StreamDeck+
+    template<>
+    struct specific_device_type<product_streamdeckplus> final : public gen2_device_type {
+      using base_type = gen2_device_type;
 
-    constexpr auto products = std::experimental::make_array(product_streamdeck_original,
-                                                            product_streamdeck_original_v2,
-                                                            product_streamdeck_mini,
-                                                            product_streamdeck_xl);
+      specific_device_type(const char* path) : base_type(path, 120, 120, 4, 2, 1) {}
+    };
+
+    // StreamDeck+ XL
+    template<>
+    struct specific_device_type<product_streamdeckplus_xl> final : public gen2_device_type {
+      using base_type = gen2_device_type;
+
+      specific_device_type(const char* path) : base_type(path, 120, 120, 9, 4, 1) {}
+    };
+
+    // clang-format off
+constexpr std::array products{
+  product_streamdeck_original,
+  product_streamdeck_original_v2,
+  product_streamdeck_mini,
+  product_streamdeck_xl,
+  product_streamdeckplus,
+  product_streamdeckplus_xl,
+};
+    // clang-format on
 
     template<size_t N = 0>
     std::unique_ptr<device_type> get_device(unsigned short product_id, const char* path)
@@ -408,20 +410,18 @@ namespace streamdeck {
 
   } // anonymous namespace
 
-
   context::context()
   {
     if (auto r = hid_init(); r < 0)
       throw std::runtime_error("hid_init failed with "s + std::to_string(r));
 
-    devs = hid_enumerate(vendor_elgato, 0); 
+    devs = hid_enumerate(vendor_elgato, 0);
     for (auto p = devs; p != nullptr; p = p->next)
       if (auto ap = get_device(p->product_id, p->path); ap)
         devinfo.emplace_back(std::move(ap));
 
     Magick::InitializeMagick(nullptr);
   }
-
 
   context::~context()
   {

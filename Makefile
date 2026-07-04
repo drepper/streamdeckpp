@@ -1,4 +1,4 @@
-VERSION = 1.8
+VERSION = 2.0
 ABI = 1
 
 CXX = g++ $(CXXSTD)
@@ -12,7 +12,7 @@ MV_F = mv -f
 RM_F = rm -f
 RPMBUILD = rpmbuild
 
-CXXSTD = -std=gnu++20
+CXXSTD = -std=gnu++26
 DEFINES =
 DEBUG = -g
 OPTS = -O0

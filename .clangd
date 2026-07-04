@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -I/usr/include/ImageMagick-7
+    - -DMAGICKCORE_HDRI_ENABLE=1
+    - -DMAGICKCORE_QUANTUM_DEPTH=16
+    - -DMAGICKCORE_CHANNEL_MASK_DEPTH=32
+    - -I/usr/include/hidapi
+    - -std=c++26
