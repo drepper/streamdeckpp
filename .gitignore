@@ -8,3 +8,4 @@ streamdeckpp.sublime-project
 streamdeckpp.sublime-workspace
 streamdeckpp-*.tar.xz
 streamdeckpp.spec
+build/

@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 
     if ("image"s == argv[1]) {
       int key = argc <= 2 ? 0 : atoi(argv[2]);
-      const char* fname = argc <= 3 ? "test.jpg" : argv[3];
+      const char* fname = argc <= 3 ? "cat-eye.jpg" : argv[3];
       ctx[i]->set_key_image(key, fname);
     } else if ("reset"s == argv[1])
       ctx[i]->reset();
