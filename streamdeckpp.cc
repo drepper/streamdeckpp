@@ -1,4 +1,5 @@
 #include "streamdeckpp.hh"
+#include "Magick++/Blob.h"
 #include "hidapi.h"
 
 #include <array>
@@ -50,6 +51,18 @@ namespace streamdeck {
       hid_close(m_d);
   }
 
+  Magick::Blob device_type::create_blob(Magick::Image&& image)
+  {
+    if (key_image_format == image_format_type::jpeg)
+      image.magick("JPEG");
+    else if (key_image_format == image_format_type::bmp)
+      image.magick("BMP");
+
+    Magick::Blob res;
+    image.write(&res);
+    return res;
+  }
+
   Magick::Blob device_type::reformat(Magick::Image&& image)
   {
     if (key_hflip)
@@ -75,19 +88,12 @@ namespace streamdeck {
       }
     }
 
-    if (key_image_format == image_format_type::jpeg)
-      image.magick("JPEG");
-    else if (key_image_format == image_format_type::bmp)
-      image.magick("BMP");
-
-    Magick::Blob res;
-    image.write(&res);
-    return res;
+    return create_blob(std::move(image));
   }
 
   int device_type::register_image(Magick::Image&& image)
   {
-    registered.emplace_back(reformat(std::move(image)));
+    registered.emplace_back(image.columns(), image.rows(), reformat(std::move(image)));
     return registered.size() - 1;
   }
 
@@ -131,8 +137,25 @@ namespace streamdeck {
 
   int device_type::set_key_image(unsigned key, int handle)
   {
-    return set_key_image(key, blob_container(registered[handle]));
+    return set_key_image(key, blob_container(std::get<Magick::Blob>(registered[handle])));
   }
+
+
+  int device_type::set_touch_image(unsigned offset, Magick::Image&& image)
+  {
+    return -1;
+  }
+
+  int device_type::set_touch_image(unsigned offset, const char* fname)
+  {
+    return set_touch_image(offset, Magick::Image(fname));
+  }
+
+  int device_type::set_touch_image(unsigned offset, int handle)
+  {
+    return -1;
+  }
+
 
   namespace {
 
@@ -193,6 +216,32 @@ namespace streamdeck {
       void _set_brightness(std::byte p) override final;
 
       std::string _get_string(std::byte c, size_t off);
+    };
+
+    // Plus generation.
+    struct plus_device_type : public gen2_device_type {
+      using base_type = gen2_device_type;
+
+      static constexpr unsigned touch_header_length = 16;
+      static constexpr unsigned touch_payload_length = image_report_length - touch_header_length;
+
+      unsigned dials;
+      unsigned touch_width;
+      unsigned touch_height;
+
+      plus_device_type(const char* path, unsigned width, unsigned height, unsigned cols, unsigned rows, unsigned rotate, unsigned dials_, unsigned touch_width_, unsigned touch_height_)
+          : gen2_device_type(path, width, height, cols, rows, rotate), dials(dials_), touch_width(touch_width_), touch_height(touch_height_)
+      {
+      }
+
+      int set_touch_image(unsigned offset, Magick::Image&& image) override;
+      int set_touch_image(unsigned offset, int handle) override;
+
+    private:
+      payload_type::iterator add_touch_header(payload_type& buffer, unsigned key, unsigned width, unsigned height, unsigned remaining, unsigned page);
+
+      template<typename C>
+      int set_touch_image(unsigned key, unsigned width, unsigned height, const C& data);
     };
 
     gen1_device_type::payload_type::iterator gen1_device_type::add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page)
@@ -330,6 +379,63 @@ namespace streamdeck {
       return _get_string(std::byte(0x05), 6);
     }
 
+
+    plus_device_type::payload_type::iterator plus_device_type::add_touch_header(payload_type& buffer, unsigned offset, unsigned width, unsigned height, unsigned remaining, unsigned page)
+    {
+      auto it = buffer.begin();
+      *it++ = std::byte(0x02);
+      *it++ = std::byte(0x0c);
+      *it++ = std::byte(offset & 0xff);
+      *it++ = std::byte(offset >> 8);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(0x00);
+      *it++ = std::byte(width & 0xff);
+      *it++ = std::byte(width >> 8);
+      *it++ = std::byte(height & 0xff);
+      *it++ = std::byte(height >> 8);
+      *it++ = std::byte(remaining > touch_payload_length ? 0x00 : 0x01);
+      *it++ = std::byte(page & 0xff);
+      *it++ = std::byte(page >> 8);
+      *it++ = std::byte(std::min(remaining, touch_payload_length) & 0xff);
+      *it++ = std::byte(std::min(remaining, touch_payload_length) >> 8);
+      *it++ = std::byte(0x00);
+
+      return it;
+    }
+
+
+    template<typename C>
+    int plus_device_type::set_touch_image(unsigned offset, unsigned width, unsigned height, const C& data)
+    {
+      if (offset >= dials * touch_width)
+        return -1;
+
+      payload_type buffer(image_report_length);
+      unsigned page = 0;
+      for (auto srcit = data.begin(); srcit != data.end(); ++page) {
+        auto destit = add_touch_header(buffer, offset, width, height, data.end() - srcit, page);
+        while (srcit != data.end() && destit != buffer.end())
+          *destit++ = std::byte(*srcit++);
+
+        if (auto r = write(buffer); r < 0)
+          return r;
+      }
+
+      return 0;
+    }
+
+    int plus_device_type::set_touch_image(unsigned offset, Magick::Image&& image)
+    {
+      auto blob(create_blob(std::move(image)));
+      return set_touch_image(offset, image.columns(), image.rows(), blob_container(blob));
+    }
+
+    int plus_device_type::set_touch_image(unsigned offset, int handle)
+    {
+      auto& blob = registered[handle];
+      return set_touch_image(offset, std::get<0>(blob), std::get<1>(blob), blob_container(std::get<Magick::Blob>(blob)));
+    }
+
     template<unsigned short D>
     struct specific_device_type;
 
@@ -371,18 +477,18 @@ namespace streamdeck {
 
     // StreamDeck+
     template<>
-    struct specific_device_type<product_streamdeckplus> final : public gen2_device_type {
-      using base_type = gen2_device_type;
+    struct specific_device_type<product_streamdeckplus> final : public plus_device_type {
+      using base_type = plus_device_type;
 
-      specific_device_type(const char* path) : base_type(path, 120, 120, 4, 2, 1) {}
+      specific_device_type(const char* path) : base_type(path, 120, 120, 4, 2, 1, 4, 200, 100) {}
     };
 
     // StreamDeck+ XL
     template<>
-    struct specific_device_type<product_streamdeckplus_xl> final : public gen2_device_type {
-      using base_type = gen2_device_type;
+    struct specific_device_type<product_streamdeckplus_xl> final : public plus_device_type {
+      using base_type = plus_device_type;
 
-      specific_device_type(const char* path) : base_type(path, 120, 120, 9, 4, 1) {}
+      specific_device_type(const char* path) : base_type(path, 120, 120, 9, 4, 1, 6, 200, 100) {}
     };
 
     // clang-format off

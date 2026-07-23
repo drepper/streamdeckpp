@@ -80,3 +80,11 @@ Instead of filling the full button only a half-high image is used, duplicated ho
 fill the width.  Under this the last full color image that was uploaded is used.
 
 If this is not desired then imagine should contain at least one colored pixel.
+
+
+Plus Device Support
+-------------------
+
+Still incomplete, at least the touch bar image support is not functional yet.
+
+Research in the protocol by [Den Delimarsky](https://den.dev/blog/reverse-engineer-stream-deck-plus/).

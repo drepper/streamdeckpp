@@ -74,6 +74,12 @@ namespace streamdeck {
     int set_key_image(unsigned key, int handle);
     int set_key_image(unsigned row, unsigned col, int handle) { return set_key_image(row * key_cols + col, handle); }
 
+    virtual int set_touch_image(unsigned offset, Magick::Image&& image);
+    int set_touch_image(unsigned offset, const Magick::Image& image) { return set_touch_image(offset, Magick::Image(image)); }
+    int set_touch_image(unsigned offset, const char* fname);
+
+    virtual int set_touch_image(unsigned offset, int handle);
+
     virtual payload_type::iterator add_header(payload_type& buffer, unsigned key, unsigned remaining, unsigned page) = 0;
 
     virtual std::vector<bool> read() = 0;
@@ -147,13 +153,15 @@ namespace streamdeck {
     template<typename C>
     int set_key_image(unsigned key, const C& data);
 
-  private:
+  protected:
+    Magick::Blob create_blob(Magick::Image&& image);
     Magick::Blob reformat(Magick::Image&& image);
 
+    std::vector<std::tuple<unsigned, unsigned, Magick::Blob>> registered;
+
+  private:
     const char* const m_path;
     hid_device* const m_d;
-
-    std::vector<Magick::Blob> registered;
   };
 
   struct context {

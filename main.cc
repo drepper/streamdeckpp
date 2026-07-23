@@ -1,6 +1,6 @@
+#include "streamdeckpp.hh"
 #include <iostream>
 #include <string>
-#include "streamdeckpp.hh"
 
 using namespace std::string_literals;
 
@@ -24,6 +24,10 @@ int main(int argc, char* argv[])
       int key = argc <= 2 ? 0 : atoi(argv[2]);
       const char* fname = argc <= 3 ? "test.jpg" : argv[3];
       ctx[i]->set_key_image(key, fname);
+    } else if ("touch"s == argv[1]) {
+      int offset = argc <= 2 ? 0 : atoi(argv[2]);
+      const char* fname = argc <= 3 ? "test.jpg" : argv[3];
+      ctx[i]->set_touch_image(offset, fname);
     } else if ("reset"s == argv[1])
       ctx[i]->reset();
     else if ("brightness"s == argv[1]) {
